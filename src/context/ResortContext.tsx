@@ -187,11 +187,11 @@ export const ResortProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         setCurrentUser(user);
         localStorage.setItem('resort_user_v1', JSON.stringify(user));
 
-        // Auto authenticate staff if role is staff/manager
-        if (user.role === 'MANAGER' || user.role === 'FRONT_DESK' || user.role === 'HOUSEKEEPER') {
+        // Auto authenticate staff if role is staff/admin
+        if (user.role === 'ADMIN' || user.role === 'MANAGER' || user.role === 'FRONT_DESK' || user.role === 'HOUSEKEEPER') {
           setIsStaffAuthenticated(true);
           sessionStorage.setItem('resort_staff_auth', 'true');
-          setActiveRole(user.role);
+          setActiveRole(user.role === 'ADMIN' ? 'MANAGER' : user.role);
         }
 
         return { success: true, user };
@@ -205,7 +205,7 @@ export const ResortProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         let role: UserRole = userInfo.role || 'GUEST';
         const emailLower = userInfo.email.toLowerCase().trim();
         if (emailLower === '674295027@parichat.skru.ac.th') {
-          role = 'MANAGER';
+          role = 'ADMIN';
         }
 
         const fallbackUser: UserProfile = {
@@ -220,10 +220,10 @@ export const ResortProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         setCurrentUser(fallbackUser);
         localStorage.setItem('resort_user_v1', JSON.stringify(fallbackUser));
 
-        if (role === 'MANAGER' || role === 'FRONT_DESK' || role === 'HOUSEKEEPER') {
+        if (role === 'ADMIN' || role === 'MANAGER' || role === 'FRONT_DESK' || role === 'HOUSEKEEPER') {
           setIsStaffAuthenticated(true);
           sessionStorage.setItem('resort_staff_auth', 'true');
-          setActiveRole(role);
+          setActiveRole(role === 'ADMIN' ? 'MANAGER' : role);
         }
 
         return { success: true, user: fallbackUser };

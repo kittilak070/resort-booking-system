@@ -24,7 +24,7 @@ export default {
         '674295027@parichat.skru.ac.th'
       ];
 
-      // Helper to verify manager access (Explicit Whitelist OR D1 Assigned Role)
+      // Helper to verify admin access (Explicit Whitelist OR D1 Assigned Role)
       const verifyManagerAccess = async (rawEmail) => {
         if (!rawEmail) return false;
         const emailLower = rawEmail.toLowerCase().trim();
@@ -33,7 +33,7 @@ export default {
         }
         try {
           const userRec = await env.DB.prepare(
-            'SELECT role FROM users WHERE email = ? AND role = "MANAGER"'
+            'SELECT role FROM users WHERE email = ? AND (role = "ADMIN" OR role = "MANAGER")'
           ).bind(emailLower).first();
           return Boolean(userRec);
         } catch {
@@ -126,11 +126,11 @@ export default {
 
           const body = await request.json().catch(() => ({}));
           const { userId, role } = body;
-          const validRoles = ['GUEST', 'FRONT_DESK', 'HOUSEKEEPER', 'MANAGER'];
+          const validRoles = ['GUEST', 'FRONT_DESK', 'HOUSEKEEPER', 'ADMIN', 'MANAGER'];
 
           if (!userId || !validRoles.includes(role)) {
             return new Response(
-              JSON.stringify({ error: 'Invalid userId or role. Allowed: GUEST, FRONT_DESK, HOUSEKEEPER, MANAGER' }),
+              JSON.stringify({ error: 'Invalid userId or role. Allowed: GUEST, FRONT_DESK, HOUSEKEEPER, ADMIN, MANAGER' }),
               { status: 400, headers: corsHeaders }
             );
           }
@@ -201,7 +201,7 @@ export default {
           const emailLower = email.toLowerCase().trim();
           let role = 'GUEST';
           if (DESIGNATED_ADMIN_EMAILS.includes(emailLower)) {
-            role = 'MANAGER';
+            role = 'ADMIN';
           }
 
           // 4. Upsert user into Cloudflare D1
@@ -214,7 +214,9 @@ export default {
               picture = COALESCE(excluded.picture, users.picture),
               google_id = COALESCE(excluded.google_id, users.google_id),
               role = CASE 
-                WHEN excluded.role = 'MANAGER' THEN 'MANAGER' 
+                WHEN excluded.role = 'ADMIN' THEN 'ADMIN' 
+                WHEN excluded.role = 'MANAGER' THEN 'ADMIN' 
+                WHEN users.role = 'MANAGER' THEN 'ADMIN'
                 ELSE users.role 
               END,
               last_login_at = CURRENT_TIMESTAMP

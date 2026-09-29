@@ -28,7 +28,8 @@ export const StaffAuthModal: React.FC<StaffAuthModalProps> = ({
     GUEST: { th: 'ลูกค้า', en: 'Guest' },
     FRONT_DESK: { th: 'แผนกต้อนรับ (Front Desk)', en: 'Front Desk' },
     HOUSEKEEPER: { th: 'งานแม่บ้าน (Housekeeping)', en: 'Housekeeping' },
-    MANAGER: { th: 'ผู้จัดการและรายงาน (Admin/Manager)', en: 'Admin/Manager' }
+    MANAGER: { th: 'ผู้ดูแลระบบ (Admin)', en: 'Admin' },
+    ADMIN: { th: 'ผู้ดูแลระบบ (Admin)', en: 'Admin' }
   };
 
   const handleSubmit = (e: React.FormEvent) => {

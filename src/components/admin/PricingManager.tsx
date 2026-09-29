@@ -76,7 +76,8 @@ export const PricingManager: React.FC = () => {
   };
 
   // Defense-in-depth: Block unauthorized users immediately
-  if (currentUser?.role !== 'MANAGER') {
+  const isUserAdmin = currentUser?.role === 'ADMIN' || currentUser?.role === 'MANAGER';
+  if (!isUserAdmin) {
     return (
       <div className="bg-white p-8 sm:p-12 rounded-3xl border border-red-200 text-center max-w-lg mx-auto shadow-xl my-8">
         <div className="w-16 h-16 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto mb-4">
@@ -84,7 +85,7 @@ export const PricingManager: React.FC = () => {
         </div>
         <h3 className="text-xl font-bold text-slate-900 mb-2">403 Access Denied</h3>
         <p className="text-sm text-slate-600 mb-6 leading-relaxed">
-          ส่วนนี้สงวนสิทธิ์เฉพาะผู้จัดการรีสอร์ท (Admin/Manager) เท่านั้น ห้ามผู้ใช้ทั่วไปหรือลูกค้าเข้าถึง
+          ส่วนนี้สงวนสิทธิ์เฉพาะแอดมิน (Admin) เท่านั้น ห้ามผู้ใช้ทั่วไปเข้าถึง
         </p>
         <button
           onClick={() => setActiveRole('GUEST')}
@@ -748,10 +749,10 @@ export const PricingManager: React.FC = () => {
                 บอกให้ผู้ดูแลคนใหม่เข้าเว็บไซต์รีสอร์ท แล้วกดปุ่ม <strong>"เข้าสู่ระบบด้วย Google"</strong> 1 ครั้ง
               </li>
               <li>
-                แอดมินเข้ามาที่แท็บนี้ (ฐานข้อมูลสมาชิก D1) แล้วเลือกเปลี่ยนสิทธิ์ในช่อง <strong>"จัดการสิทธิ์"</strong> เป็น <strong>👑 ผู้จัดการ/แอดมิน (MANAGER)</strong>
+                แอดมินเข้ามาที่แท็บนี้ (ฐานข้อมูลสมาชิก D1) แล้วเลือกเปลี่ยนสิทธิ์ในช่อง <strong>"จัดการสิทธิ์"</strong> เป็น <strong>👑 แอดมิน (ADMIN)</strong>
               </li>
               <li>
-                เมื่อผู้ดูแลคนนั้นรีเฟรชหน้าจอ จะได้รับสิทธิ์เข้าใช้งานระบบหลังบ้านและเมนูผู้จัดการได้ทันที
+                เมื่อผู้ดูแลคนนั้นรีเฟรชหน้าจอ จะได้รับสิทธิ์เข้าใช้งานระบบหลังบ้านและเมนูแอดมินได้ทันที
               </li>
             </ol>
             <p className="text-slate-600 text-[11px] pt-1 border-t border-purple-200/60 font-medium">
@@ -825,26 +826,32 @@ export const PricingManager: React.FC = () => {
                         <td className="px-5 py-3.5">
                           <span
                             className={`px-2.5 py-1 rounded-full text-[10px] font-bold border ${
-                              user.role === 'MANAGER'
+                              user.role === 'ADMIN' || user.role === 'MANAGER'
                                 ? 'bg-purple-100 text-purple-800 border-purple-200'
                                 : user.role === 'FRONT_DESK'
                                 ? 'bg-teal-100 text-teal-800 border-teal-200'
                                 : user.role === 'HOUSEKEEPER'
                                 ? 'bg-amber-100 text-amber-800 border-amber-200'
-                                : 'bg-blue-100 text-blue-800 border-blue-200'
+                                : 'bg-slate-100 text-slate-700 border-slate-200'
                             }`}
                           >
-                            {user.role}
+                            {user.role === 'ADMIN' || user.role === 'MANAGER'
+                              ? 'ADMIN'
+                              : user.role === 'FRONT_DESK'
+                              ? 'FRONT_DESK'
+                              : user.role === 'HOUSEKEEPER'
+                              ? 'HOUSEKEEPER'
+                              : 'ทั่วไป'}
                           </span>
                         </td>
                         <td className="px-5 py-3.5">
                           <div className="flex items-center gap-2">
                             <select
-                              value={user.role}
+                              value={user.role === 'MANAGER' ? 'ADMIN' : user.role}
                               disabled={user.email === '674295027@parichat.skru.ac.th' || updatingUserId === user.id}
                               onChange={(e) => handleUpdateUserRole(user.id, e.target.value)}
                               className={`text-[11px] font-bold px-2 py-1 rounded-lg border transition-all cursor-pointer ${
-                                user.role === 'MANAGER'
+                                user.role === 'ADMIN' || user.role === 'MANAGER'
                                   ? 'bg-purple-50 text-purple-900 border-purple-300'
                                   : user.role === 'FRONT_DESK'
                                   ? 'bg-teal-50 text-teal-800 border-teal-300'
@@ -854,14 +861,14 @@ export const PricingManager: React.FC = () => {
                               } disabled:opacity-60 disabled:cursor-not-allowed`}
                               title={
                                 user.email === '674295027@parichat.skru.ac.th'
-                                  ? 'บัญชีผู้จัดการสูงสุด (Root Super Admin)'
+                                  ? 'บัญชีแอดมินสูงสุด (Root Super Admin)'
                                   : 'เลือกเปลี่ยนบทบาทผู้ใช้'
                               }
                             >
-                              <option value="MANAGER">👑 ผู้จัดการ (MANAGER)</option>
+                              <option value="ADMIN">👑 แอดมิน (ADMIN)</option>
                               <option value="FRONT_DESK">🛎️ แผนกต้อนรับ (FRONT_DESK)</option>
                               <option value="HOUSEKEEPER">🧹 แม่บ้าน (HOUSEKEEPER)</option>
-                              <option value="GUEST">👤 ลูกค้าทั่วไป (GUEST)</option>
+                              <option value="GUEST">👤 ทั่วไป (GUEST/USER)</option>
                             </select>
                             {updatingUserId === user.id && (
                               <RefreshCw className="w-3.5 h-3.5 animate-spin text-teal-600 shrink-0" />

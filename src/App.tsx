@@ -55,16 +55,18 @@ const MainAppContent: React.FC = () => {
     return true;
   });
 
+  const isCurrentUserAdmin = currentUser?.role === 'ADMIN' || currentUser?.role === 'MANAGER';
+
   // Defensive auto-reset: Enforce role-based access control
   React.useEffect(() => {
-    if (activeRole === 'MANAGER' && currentUser?.role !== 'MANAGER') {
+    if ((activeRole === 'MANAGER' || (activeRole as string) === 'ADMIN') && !isCurrentUserAdmin) {
       setActiveRole('GUEST');
-    } else if (activeRole === 'FRONT_DESK' && currentUser?.role !== 'FRONT_DESK' && currentUser?.role !== 'MANAGER') {
+    } else if (activeRole === 'FRONT_DESK' && currentUser?.role !== 'FRONT_DESK' && !isCurrentUserAdmin) {
       setActiveRole('GUEST');
-    } else if (activeRole === 'HOUSEKEEPER' && currentUser?.role !== 'HOUSEKEEPER' && currentUser?.role !== 'MANAGER') {
+    } else if (activeRole === 'HOUSEKEEPER' && currentUser?.role !== 'HOUSEKEEPER' && !isCurrentUserAdmin) {
       setActiveRole('GUEST');
     }
-  }, [currentUser, activeRole, setActiveRole]);
+  }, [currentUser, activeRole, setActiveRole, isCurrentUserAdmin]);
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col justify-between">
@@ -141,7 +143,7 @@ const MainAppContent: React.FC = () => {
 
           {/* FRONT DESK VIEW (Staff & Manager Only) */}
           {activeRole === 'FRONT_DESK' && (
-            (currentUser?.role === 'FRONT_DESK' || currentUser?.role === 'MANAGER') ? (
+            (currentUser?.role === 'FRONT_DESK' || isCurrentUserAdmin) ? (
               <RoomTimelineGrid />
             ) : (
               <div className="bg-white p-8 sm:p-12 rounded-3xl border border-red-200 text-center max-w-lg mx-auto shadow-xl my-8">
@@ -151,8 +153,8 @@ const MainAppContent: React.FC = () => {
                 <h3 className="text-xl font-bold text-slate-900 mb-2">403 Access Denied</h3>
                 <p className="text-sm text-slate-600 mb-6 leading-relaxed">
                   {isEn 
-                    ? 'Front Desk operations are restricted to authorized front desk staff and managers only.' 
-                    : 'ส่วนงานต้อนรับส่วนหน้า (Front Desk) สงวนสิทธิ์เฉพาะเจ้าหน้าที่แผนกต้อนรับและผู้จัดการเท่านั้น ห้ามผู้ใช้ทั่วไปเข้าถึง'}
+                    ? 'Front Desk operations are restricted to authorized front desk staff and administrators only.' 
+                    : 'ส่วนงานต้อนรับส่วนหน้า (Front Desk) สงวนสิทธิ์เฉพาะเจ้าหน้าที่แผนกต้อนรับและแอดมินเท่านั้น ห้ามผู้ใช้ทั่วไปเข้าถึง'}
                 </p>
                 <button
                   onClick={() => setActiveRole('GUEST')}
@@ -164,9 +166,9 @@ const MainAppContent: React.FC = () => {
             )
           )}
 
-          {/* HOUSEKEEPING VIEW (Housekeeping & Manager Only) */}
+          {/* HOUSEKEEPING VIEW (Housekeeping & Admin Only) */}
           {activeRole === 'HOUSEKEEPER' && (
-            (currentUser?.role === 'HOUSEKEEPER' || currentUser?.role === 'MANAGER') ? (
+            (currentUser?.role === 'HOUSEKEEPER' || isCurrentUserAdmin) ? (
               <HousekeepingMobileView />
             ) : (
               <div className="bg-white p-8 sm:p-12 rounded-3xl border border-red-200 text-center max-w-lg mx-auto shadow-xl my-8">
@@ -176,8 +178,8 @@ const MainAppContent: React.FC = () => {
                 <h3 className="text-xl font-bold text-slate-900 mb-2">403 Access Denied</h3>
                 <p className="text-sm text-slate-600 mb-6 leading-relaxed">
                   {isEn 
-                    ? 'Housekeeping operations are restricted to authorized housekeeping staff and managers only.' 
-                    : 'ส่วนงานแม่บ้าน (Housekeeping) สงวนสิทธิ์เฉพาะเจ้าหน้าที่แม่บ้านและผู้จัดการเท่านั้น ห้ามผู้ใช้ทั่วไปเข้าถึง'}
+                    ? 'Housekeeping operations are restricted to authorized housekeeping staff and administrators only.' 
+                    : 'ส่วนงานแม่บ้าน (Housekeeping) สงวนสิทธิ์เฉพาะเจ้าหน้าที่แม่บ้านและแอดมินเท่านั้น ห้ามผู้ใช้ทั่วไปเข้าถึง'}
                 </p>
                 <button
                   onClick={() => setActiveRole('GUEST')}
@@ -189,9 +191,9 @@ const MainAppContent: React.FC = () => {
             )
           )}
 
-          {/* ADMIN / MANAGER VIEW (Strictly Manager Only) */}
-          {activeRole === 'MANAGER' && (
-            currentUser?.role === 'MANAGER' ? (
+          {/* ADMIN VIEW (Strictly Admin Only) */}
+          {(activeRole === 'MANAGER' || (activeRole as string) === 'ADMIN') && (
+            isCurrentUserAdmin ? (
               <PricingManager />
             ) : (
               <div className="bg-white p-8 sm:p-12 rounded-3xl border border-red-200 text-center max-w-lg mx-auto shadow-xl my-8">
@@ -201,8 +203,8 @@ const MainAppContent: React.FC = () => {
                 <h3 className="text-xl font-bold text-slate-900 mb-2">403 Access Denied</h3>
                 <p className="text-sm text-slate-600 mb-6 leading-relaxed">
                   {isEn 
-                    ? 'Admin & Management section is restricted to Resort Managers and Administrators only.' 
-                    : 'ส่วนผู้ดูแลระบบและการบริหารจัดการ (Admin) สงวนสิทธิ์เฉพาะผู้จัดการรีสอร์ทเท่านั้น ห้ามผู้ใช้ทั่วไปเข้าถึง'}
+                    ? 'Admin section is restricted to Administrators only.' 
+                    : 'ส่วนผู้ดูแลระบบ (Admin) สงวนสิทธิ์เฉพาะแอดมินเท่านั้น ห้ามผู้ใช้ทั่วไปเข้าถึง'}
                 </p>
                 <button
                   onClick={() => setActiveRole('GUEST')}

@@ -26,6 +26,14 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenMyBookings, onOpenNotifica
   const [pendingRole, setPendingRole] = useState<UserRole | null>(null);
 
   const userRole = currentUser?.role || 'GUEST';
+  const isUserAdmin = userRole === 'ADMIN' || userRole === 'MANAGER';
+
+  const getRoleBadgeLabel = (role: UserRole | string) => {
+    if (role === 'ADMIN' || role === 'MANAGER') return 'ADMIN';
+    if (role === 'FRONT_DESK') return 'FRONT DESK';
+    if (role === 'HOUSEKEEPER') return 'HOUSEKEEPER';
+    return isEn ? 'USER' : 'ทั่วไป';
+  };
 
   const allRoleOptions: { 
     role: UserRole; 
@@ -35,8 +43,8 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenMyBookings, onOpenNotifica
   }[] = [
     { 
       role: 'GUEST', 
-      shortLabel: isEn ? 'Guest' : 'ลูกค้า', 
-      fullLabel: isEn ? 'Guest View' : 'ลูกค้า (Guest)', 
+      shortLabel: isEn ? 'User' : 'ทั่วไป', 
+      fullLabel: isEn ? 'General User View' : 'ผู้ใช้ทั่วไป', 
       icon: <User className="w-3.5 h-3.5" /> 
     },
     { 
@@ -53,8 +61,8 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenMyBookings, onOpenNotifica
     },
     { 
       role: 'MANAGER', 
-      shortLabel: isEn ? 'Admin' : 'ผู้จัดการ', 
-      fullLabel: isEn ? 'Admin & Reports' : 'ผู้จัดการ (Admin)', 
+      shortLabel: isEn ? 'Admin' : 'แอดมิน', 
+      fullLabel: isEn ? 'Admin Dashboard' : 'แอดมิน (Admin)', 
       icon: <BarChart3 className="w-3.5 h-3.5" /> 
     }
   ];
@@ -62,7 +70,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenMyBookings, onOpenNotifica
   // Restrict visible roles strictly based on user's verified role (Guests cannot see Staff/Admin)
   const visibleRoles = allRoleOptions.filter(item => {
     if (item.role === 'GUEST') return true;
-    if (userRole === 'MANAGER') return true;
+    if (isUserAdmin) return true;
     if (userRole === 'FRONT_DESK' && item.role === 'FRONT_DESK') return true;
     if (userRole === 'HOUSEKEEPER' && item.role === 'HOUSEKEEPER') return true;
     return false;
@@ -75,7 +83,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenMyBookings, onOpenNotifica
     }
 
     // Only allow if user possesses the authorized role
-    if (userRole === 'MANAGER' || userRole === role) {
+    if (isUserAdmin || userRole === role) {
       setActiveRole(role);
       return;
     }
@@ -187,7 +195,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenMyBookings, onOpenNotifica
                         {currentUser.name}
                       </span>
                       <span className="text-[9px] font-semibold text-teal-700 leading-tight">
-                        {currentUser.role}
+                        {getRoleBadgeLabel(currentUser.role)}
                       </span>
                     </div>
                   </button>
@@ -204,8 +212,16 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenMyBookings, onOpenNotifica
                         <div className="min-w-0">
                           <p className="text-xs font-bold text-slate-900 truncate">{currentUser.name}</p>
                           <p className="text-[10px] text-slate-400 truncate font-mono">{currentUser.email}</p>
-                          <span className="inline-block mt-1 text-[9px] font-bold px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 border border-teal-200">
-                            Role: {currentUser.role}
+                          <span className={`inline-block mt-1 text-[9px] font-bold px-2 py-0.5 rounded-full border ${
+                            isUserAdmin
+                              ? 'bg-purple-50 text-purple-700 border-purple-200'
+                              : currentUser.role === 'FRONT_DESK'
+                              ? 'bg-teal-50 text-teal-700 border-teal-200'
+                              : currentUser.role === 'HOUSEKEEPER'
+                              ? 'bg-amber-50 text-amber-700 border-amber-200'
+                              : 'bg-slate-50 text-slate-700 border-slate-200'
+                          }`}>
+                            Role: {getRoleBadgeLabel(currentUser.role)}
                           </span>
                         </div>
                       </div>

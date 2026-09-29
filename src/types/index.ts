@@ -141,7 +141,7 @@ export interface Booking {
   reviewed?: boolean;
 }
 
-export type UserRole = 'GUEST' | 'FRONT_DESK' | 'HOUSEKEEPER' | 'MANAGER';
+export type UserRole = 'GUEST' | 'FRONT_DESK' | 'HOUSEKEEPER' | 'MANAGER' | 'ADMIN';
 
 export interface UserProfile {
   id: string;
