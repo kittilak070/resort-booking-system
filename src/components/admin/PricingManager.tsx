@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useResort } from '../../context/ResortContext';
 import { PromoCode } from '../../types';
 import { 
   BarChart3, TrendingUp, DollarSign, Bed, 
-  Users, Cloud, Download, Tag, Plus, Wrench, Check
+  Users, Cloud, Download, Tag, Plus, Wrench, Check,
+  RefreshCw, ShieldCheck, UserCheck
 } from 'lucide-react';
 
 export const PricingManager: React.FC = () => {
@@ -12,7 +13,30 @@ export const PricingManager: React.FC = () => {
     togglePromoCode, maintenanceIssues, resolveMaintenance 
   } = useResort();
 
-  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'PROMOS' | 'MAINTENANCE' | 'FINANCIAL'>('OVERVIEW');
+  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'PROMOS' | 'MAINTENANCE' | 'FINANCIAL' | 'USERS'>('OVERVIEW');
+  const [d1Users, setD1Users] = useState<any[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+
+  const fetchUsers = async () => {
+    setLoadingUsers(true);
+    try {
+      const res = await fetch('/api/users');
+      if (res.ok) {
+        const data = await res.json();
+        setD1Users(Array.isArray(data) ? data : (data.users || []));
+      }
+    } catch (err) {
+      console.error('Error fetching users:', err);
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'USERS') {
+      fetchUsers();
+    }
+  }, [activeTab]);
 
   // New promo code form
   const [newCode, setNewCode] = useState('');
@@ -151,6 +175,17 @@ export const PricingManager: React.FC = () => {
           }`}
         >
           รายการแจ้งซ่อมบำรุง ({maintenanceIssues.filter(m => m.status === 'PENDING_REPAIR').length})
+        </button>
+        <button
+          onClick={() => setActiveTab('USERS')}
+          className={`px-4 py-2 rounded-xl transition-all flex items-center gap-1.5 ${
+            activeTab === 'USERS'
+              ? 'bg-teal-700 text-white shadow-sm'
+              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+          }`}
+        >
+          <UserCheck className="w-3.5 h-3.5" />
+          <span>บัญชีผู้ใช้ Google (D1)</span>
         </button>
       </div>
 
@@ -602,6 +637,111 @@ export const PricingManager: React.FC = () => {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* TAB 5: USERS (Cloudflare D1 Google OAuth) */}
+      {activeTab === 'USERS' && (
+        <div className="space-y-6">
+          <div className="bg-white p-5 rounded-2xl shadow-xs border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center">
+                <ShieldCheck className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-900 text-base flex items-center gap-2">
+                  <span>ผู้ใช้งานที่ลงทะเบียนผ่าน Google OAuth</span>
+                  <span className="text-xs bg-emerald-50 text-emerald-700 font-semibold px-2 py-0.5 rounded-full border border-emerald-200">
+                    Live Cloudflare D1
+                  </span>
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  ตาราง users ในฐานข้อมูล D1 (resort-db) พร้อมสิทธิ์การใช้งาน Role-Based Access Control
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={fetchUsers}
+              disabled={loadingUsers}
+              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-colors self-start sm:self-auto"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loadingUsers ? 'animate-spin text-teal-600' : ''}`} />
+              <span>รีเฟรชข้อมูล</span>
+            </button>
+          </div>
+
+          {loadingUsers ? (
+            <div className="bg-white p-12 text-center rounded-2xl border border-slate-200">
+              <RefreshCw className="w-6 h-6 animate-spin text-teal-600 mx-auto mb-2" />
+              <p className="text-xs text-slate-500">กำลังดึงข้อมูลบัญชีผู้ใช้จาก Cloudflare D1...</p>
+            </div>
+          ) : d1Users.length === 0 ? (
+            <div className="bg-white p-12 text-center rounded-2xl border border-slate-200">
+              <UserCheck className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+              <p className="text-sm font-bold text-slate-700">ยังไม่มีผู้ใช้งานเข้าสู่ระบบผ่าน Google</p>
+              <p className="text-xs text-slate-400 mt-1">
+                คลิกปุ่ม "เข้าสู่ระบบด้วย Google" บนแถบเมนูด้านบนเพื่อเริ่มต้นลงทะเบียนและทดสอบ
+              </p>
+            </div>
+          ) : (
+            <div className="bg-white rounded-2xl shadow-xs border border-slate-200 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
+                    <tr>
+                      <th className="px-5 py-3.5">ผู้ใช้งาน (User)</th>
+                      <th className="px-5 py-3.5">อีเมล (Email)</th>
+                      <th className="px-5 py-3.5">สิทธิ์การใช้งาน (Role)</th>
+                      <th className="px-5 py-3.5">Google ID</th>
+                      <th className="px-5 py-3.5">เข้าสู่ระบบล่าสุด (Last Login)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 font-medium">
+                    {d1Users.map((user) => (
+                      <tr key={user.id} className="hover:bg-slate-50/70 transition-colors">
+                        <td className="px-5 py-3.5 flex items-center gap-3">
+                          <img
+                            src={user.picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=0d9488&color=fff`}
+                            alt={user.name}
+                            className="w-8 h-8 rounded-full object-cover border border-slate-200 shrink-0"
+                          />
+                          <div>
+                            <span className="font-bold text-slate-900 block">{user.name}</span>
+                            <span className="text-[10px] text-slate-400 font-mono">{user.id}</span>
+                          </div>
+                        </td>
+                        <td className="px-5 py-3.5 font-mono text-slate-700">
+                          {user.email}
+                        </td>
+                        <td className="px-5 py-3.5">
+                          <span
+                            className={`px-2.5 py-1 rounded-full text-[10px] font-bold border ${
+                              user.role === 'MANAGER'
+                                ? 'bg-purple-100 text-purple-800 border-purple-200'
+                                : user.role === 'FRONT_DESK'
+                                ? 'bg-teal-100 text-teal-800 border-teal-200'
+                                : user.role === 'HOUSEKEEPER'
+                                ? 'bg-amber-100 text-amber-800 border-amber-200'
+                                : 'bg-blue-100 text-blue-800 border-blue-200'
+                            }`}
+                          >
+                            {user.role}
+                          </span>
+                        </td>
+                        <td className="px-5 py-3.5 font-mono text-slate-500 text-[11px]">
+                          {user.google_id || '-'}
+                        </td>
+                        <td className="px-5 py-3.5 text-slate-500 text-[11px]">
+                          {user.last_login_at ? new Date(user.last_login_at).toLocaleString('th-TH') : '-'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </div>

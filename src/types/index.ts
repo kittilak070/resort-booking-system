@@ -142,3 +142,14 @@ export interface Booking {
 }
 
 export type UserRole = 'GUEST' | 'FRONT_DESK' | 'HOUSEKEEPER' | 'MANAGER';
+
+export interface UserProfile {
+  id: string;
+  email: string;
+  name: string;
+  picture?: string;
+  role: UserRole;
+  googleId?: string;
+  createdAt?: string;
+  lastLoginAt?: string;
+}

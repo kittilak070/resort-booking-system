@@ -72,6 +72,114 @@ export default {
           return new Response(JSON.stringify(results), { headers: corsHeaders });
         }
 
+        // GET /api/users - List all users (For Manager/Admin dashboard)
+        if (url.pathname === '/api/users') {
+          const { results } = await env.DB.prepare(
+            'SELECT id, email, name, picture, role, google_id, created_at, last_login_at FROM users ORDER BY last_login_at DESC'
+          ).all();
+          return new Response(JSON.stringify(results), { headers: corsHeaders });
+        }
+
+        // POST /api/auth/google - Authenticate or Upsert Google User in D1
+        if (url.pathname === '/api/auth/google' && request.method === 'POST') {
+          const body = await request.json().catch(() => ({}));
+          let email = '';
+          let name = '';
+          let picture = '';
+          let googleId = '';
+
+          // 1. If Google ID Token (credential) is provided, verify or decode
+          if (body.credential) {
+            try {
+              // Verify with Google tokeninfo endpoint
+              const verifyRes = await fetch(
+                `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(body.credential)}`
+              );
+              if (verifyRes.ok) {
+                const tokenData = await verifyRes.json();
+                email = tokenData.email || '';
+                name = tokenData.name || tokenData.given_name || email.split('@')[0];
+                picture = tokenData.picture || '';
+                googleId = tokenData.sub || '';
+              } else {
+                // Fallback to manual JWT decoding if Google API returns error or offline
+                const base64Url = body.credential.split('.')[1];
+                if (base64Url) {
+                  const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                  const payload = JSON.parse(atob(base64));
+                  email = payload.email || '';
+                  name = payload.name || payload.given_name || email.split('@')[0];
+                  picture = payload.picture || '';
+                  googleId = payload.sub || '';
+                }
+              }
+            } catch (jwtErr) {
+              console.error('JWT decode error:', jwtErr);
+            }
+          }
+
+          // 2. Fallback to direct user payload (for 1-click test/demo profiles)
+          if (!email && body.user) {
+            email = body.user.email || '';
+            name = body.user.name || email.split('@')[0];
+            picture = body.user.picture || '';
+            googleId = body.user.googleId || `g_${Date.now()}`;
+          }
+
+          if (!email || !email.includes('@')) {
+            return new Response(
+              JSON.stringify({ error: 'Invalid email or Google credential' }),
+              { status: 400, headers: corsHeaders }
+            );
+          }
+
+          // 3. Determine Role based on staff whitelist / domain policy
+          const emailLower = email.toLowerCase().trim();
+          let role = 'GUEST';
+          if (
+            emailLower === '674295027@parichat.skru.ac.th' ||
+            emailLower.endsWith('@parichat.skru.ac.th') ||
+            emailLower.startsWith('admin')
+          ) {
+            role = 'MANAGER';
+          } else if (emailLower.includes('frontdesk') || emailLower.includes('reception')) {
+            role = 'FRONT_DESK';
+          } else if (emailLower.includes('clean') || emailLower.includes('housekeeper') || emailLower.includes('maid')) {
+            role = 'HOUSEKEEPER';
+          }
+
+          // 4. Upsert user into Cloudflare D1
+          const generatedId = `usr_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+          await env.DB.prepare(`
+            INSERT INTO users (id, email, name, picture, role, google_id, last_login_at)
+            VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(email) DO UPDATE SET
+              name = excluded.name,
+              picture = COALESCE(excluded.picture, users.picture),
+              google_id = COALESCE(excluded.google_id, users.google_id),
+              last_login_at = CURRENT_TIMESTAMP
+          `).bind(generatedId, emailLower, name, picture, role, googleId).run();
+
+          const dbUser = await env.DB.prepare('SELECT * FROM users WHERE email = ?').bind(emailLower).first();
+
+          return new Response(
+            JSON.stringify({
+              success: true,
+              user: {
+                id: dbUser.id,
+                email: dbUser.email,
+                name: dbUser.name,
+                picture: dbUser.picture,
+                role: dbUser.role,
+                googleId: dbUser.google_id,
+                createdAt: dbUser.created_at,
+                lastLoginAt: dbUser.last_login_at
+              }
+            }),
+            { headers: corsHeaders }
+          );
+        }
+
         // 404 for unknown API routes
         return new Response(
           JSON.stringify({ error: 'Endpoint not found', path: url.pathname }),
@@ -95,7 +203,7 @@ export default {
       response = await env.ASSETS.fetch(new Request(fallbackUrl.toString(), request));
     }
 
-    // OWASP SEC-04: Attach Security Headers
+    // OWASP SEC-04: Attach Security Headers (Relaxed for Google Identity Services)
     const newHeaders = new Headers(response.headers);
     newHeaders.set('X-Frame-Options', 'DENY');
     newHeaders.set('X-Content-Type-Options', 'nosniff');
@@ -104,7 +212,7 @@ export default {
     newHeaders.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
     newHeaders.set(
       'Content-Security-Policy',
-      "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https://images.unsplash.com https://api.qrserver.com; connect-src 'self'; frame-ancestors 'none';"
+      "default-src 'self'; script-src 'self' 'unsafe-inline' https://accounts.google.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https://images.unsplash.com https://api.qrserver.com https://*.googleusercontent.com https://lh3.googleusercontent.com; connect-src 'self' https://accounts.google.com https://oauth2.googleapis.com; frame-src https://accounts.google.com; frame-ancestors 'none';"
     );
 
     return new Response(response.body, {
@@ -114,3 +222,4 @@ export default {
     });
   }
 };
+

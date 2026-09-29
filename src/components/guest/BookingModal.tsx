@@ -24,7 +24,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   initialCheckOut,
   initialGuests
 }) => {
-  const { addOns, createBooking, confirmPayment, setActiveRole, validatePromoCode } = useResort();
+  const { addOns, createBooking, confirmPayment, setActiveRole, validatePromoCode, currentUser } = useResort();
 
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
 
@@ -33,10 +33,10 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const [checkOutDate] = useState(initialCheckOut);
   const [guestsCount] = useState(initialGuests);
 
-  // Guest details
-  const [guestName, setGuestName] = useState('คุณวราภรณ์ มั่งมี');
+  // Guest details (Auto-populated from Google login if available)
+  const [guestName, setGuestName] = useState(currentUser?.name || 'คุณวราภรณ์ มั่งมี');
   const [guestPhone, setGuestPhone] = useState('089-876-5432');
-  const [guestEmail, setGuestEmail] = useState('waraporn@example.com');
+  const [guestEmail, setGuestEmail] = useState(currentUser?.email || 'waraporn@example.com');
   const [guestIdCard, setGuestIdCard] = useState('3100500892147');
   const [specialRequests, setSpecialRequests] = useState('ขอเช็คอินช่วง 14:30 น. และขอห้องปลอดบุหรี่');
   const [paymentMethod, setPaymentMethod] = useState<'PROMPTPAY_QR' | 'CREDIT_CARD'>('PROMPTPAY_QR');

@@ -2,7 +2,8 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { 
   Room, Booking, AddOn, UserRole, RoomStatus, 
   SelectedAddOn, PromoCode, MaintenanceIssue,
-  Language, Review, MinibarItem, DispatchedNotification 
+  Language, Review, MinibarItem, DispatchedNotification,
+  UserProfile
 } from '../types';
 import { 
   INITIAL_ROOMS, INITIAL_ADDONS, INITIAL_MINIBAR_ITEMS, 
@@ -118,6 +119,9 @@ interface ResortContextType {
   isStaffAuthenticated: boolean;
   authenticateStaff: (pin: string) => boolean;
   logoutStaff: () => void;
+  currentUser: UserProfile | null;
+  loginWithGoogle: (credential?: string, userInfo?: Partial<UserProfile>) => Promise<{ success: boolean; user?: UserProfile; error?: string }>;
+  logoutUser: () => void;
   resetAllData: () => void;
 }
 
@@ -150,6 +154,96 @@ export const ResortProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     setIsStaffAuthenticated(false);
     sessionStorage.removeItem('resort_staff_auth');
     setActiveRole('GUEST');
+  };
+
+  // Google OAuth User State
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => {
+    try {
+      const saved = localStorage.getItem('resort_user_v1');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const loginWithGoogle = async (
+    credential?: string,
+    userInfo?: Partial<UserProfile>
+  ): Promise<{ success: boolean; user?: UserProfile; error?: string }> => {
+    try {
+      const res = await fetch('/api/auth/google', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ credential, user: userInfo })
+      });
+
+      if (!res.ok) {
+        throw new Error(`Auth failed with status ${res.status}`);
+      }
+
+      const data = await res.json();
+      if (data.success && data.user) {
+        const user: UserProfile = data.user;
+        setCurrentUser(user);
+        localStorage.setItem('resort_user_v1', JSON.stringify(user));
+
+        // Auto authenticate staff if role is staff/manager
+        if (user.role === 'MANAGER' || user.role === 'FRONT_DESK' || user.role === 'HOUSEKEEPER') {
+          setIsStaffAuthenticated(true);
+          sessionStorage.setItem('resort_staff_auth', 'true');
+          setActiveRole(user.role);
+        }
+
+        return { success: true, user };
+      } else {
+        throw new Error(data.error || 'Login failed');
+      }
+    } catch (err: any) {
+      console.warn('API auth error, falling back to local session:', err);
+      // Fallback for offline or local preview
+      if (userInfo && userInfo.email) {
+        let role: UserRole = userInfo.role || 'GUEST';
+        const emailLower = userInfo.email.toLowerCase();
+        if (
+          emailLower === '674295027@parichat.skru.ac.th' ||
+          emailLower.endsWith('@parichat.skru.ac.th') ||
+          emailLower.startsWith('admin')
+        ) {
+          role = 'MANAGER';
+        } else if (emailLower.includes('frontdesk')) {
+          role = 'FRONT_DESK';
+        } else if (emailLower.includes('clean') || emailLower.includes('housekeeper')) {
+          role = 'HOUSEKEEPER';
+        }
+
+        const fallbackUser: UserProfile = {
+          id: userInfo.id || `usr_${Date.now()}`,
+          email: userInfo.email,
+          name: userInfo.name || userInfo.email.split('@')[0],
+          picture: userInfo.picture,
+          role,
+          googleId: userInfo.googleId || `g_${Date.now()}`
+        };
+
+        setCurrentUser(fallbackUser);
+        localStorage.setItem('resort_user_v1', JSON.stringify(fallbackUser));
+
+        if (role === 'MANAGER' || role === 'FRONT_DESK' || role === 'HOUSEKEEPER') {
+          setIsStaffAuthenticated(true);
+          sessionStorage.setItem('resort_staff_auth', 'true');
+          setActiveRole(role);
+        }
+
+        return { success: true, user: fallbackUser };
+      }
+      return { success: false, error: err.message || 'Authentication failed' };
+    }
+  };
+
+  const logoutUser = () => {
+    setCurrentUser(null);
+    localStorage.removeItem('resort_user_v1');
+    logoutStaff();
   };
 
   useEffect(() => {
@@ -907,6 +1001,9 @@ export const ResortProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         isStaffAuthenticated,
         authenticateStaff,
         logoutStaff,
+        currentUser,
+        loginWithGoogle,
+        logoutUser,
         resetAllData
       }}
     >
