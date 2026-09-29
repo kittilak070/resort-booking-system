@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useResort } from '../../context/ResortContext';
-import { X, CheckCircle2, ShieldCheck, Sparkles, AlertCircle } from 'lucide-react';
+import { 
+  X, CheckCircle2, ShieldCheck, Sparkles, AlertCircle, 
+  ExternalLink, KeyRound, ChevronDown, ChevronUp, Copy, Check 
+} from 'lucide-react';
 
 interface GoogleAuthModalProps {
   isOpen: boolean;
@@ -23,18 +26,28 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
   const [customEmail, setCustomEmail] = useState('');
   const [customName, setCustomName] = useState('');
   const [showCustomInput, setShowCustomInput] = useState(false);
-  const googleBtnRef = useRef<HTMLDivElement>(null);
+  const [showGuide, setShowGuide] = useState(false);
+  const [copiedText, setCopiedText] = useState<string | null>(null);
 
-  const googleClientId = (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID;
+  // Active Client ID state (persisted in localStorage or from env)
+  const envClientId = (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID || '';
+  const [activeClientId, setActiveClientId] = useState<string>(() => {
+    return localStorage.getItem('resort_google_client_id') || envClientId;
+  });
+  const [inputClientId, setInputClientId] = useState<string>(activeClientId);
+  const [showClientIdInput, setShowClientIdInput] = useState<boolean>(!activeClientId);
+
+  const googleBtnRef = useRef<HTMLDivElement>(null);
+  const originUrl = window.location.origin;
 
   // Initialize real Google Identity Services if client ID is set
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || !activeClientId) return;
 
-    if (window.google?.accounts?.id && googleClientId) {
+    if (window.google?.accounts?.id) {
       try {
         window.google.accounts.id.initialize({
-          client_id: googleClientId,
+          client_id: activeClientId,
           callback: async (response: any) => {
             if (response.credential) {
               setIsLoading(true);
@@ -52,21 +65,110 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
         });
 
         if (googleBtnRef.current) {
+          googleBtnRef.current.innerHTML = '';
           window.google.accounts.id.renderButton(googleBtnRef.current, {
             theme: 'outline',
             size: 'large',
-            width: '100%',
+            width: 320,
             text: 'continue_with',
             shape: 'pill'
           });
         }
-      } catch (err) {
+      } catch (err: any) {
         console.warn('Google Identity initialization error:', err);
       }
     }
-  }, [isOpen, googleClientId, loginWithGoogle, onClose, onSuccess]);
+  }, [isOpen, activeClientId, loginWithGoogle, onClose, onSuccess]);
 
   if (!isOpen) return null;
+
+  // Real Google OAuth Popup Login
+  const handleGooglePopupLogin = () => {
+    if (!activeClientId) {
+      setErrorMsg(isEn ? 'Please set your Google Client ID first' : 'กรุณาระบุ Google Client ID ก่อนเข้าสู่ระบบ');
+      setShowClientIdInput(true);
+      return;
+    }
+
+    if (!window.google?.accounts?.oauth2) {
+      setErrorMsg(isEn ? 'Google Identity SDK is loading, please try again in a few seconds' : 'กำลังโหลด SDK ของ Google กรุณาลองใหม่อีกครั้งใน 2-3 วินาที');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      setErrorMsg(null);
+      const tokenClient = window.google.accounts.oauth2.initTokenClient({
+        client_id: activeClientId,
+        scope: 'email profile openid',
+        callback: async (tokenResponse: any) => {
+          if (tokenResponse?.error) {
+            setIsLoading(false);
+            setErrorMsg(`Google OAuth error: ${tokenResponse.error_description || tokenResponse.error}`);
+            return;
+          }
+
+          if (tokenResponse?.access_token) {
+            try {
+              // Fetch user profile from official Google UserInfo endpoint
+              const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                headers: { Authorization: `Bearer ${tokenResponse.access_token}` }
+              });
+
+              if (!userInfoRes.ok) {
+                throw new Error('Failed to retrieve user profile from Google');
+              }
+
+              const profile = await userInfoRes.json();
+              const res = await loginWithGoogle(undefined, {
+                email: profile.email,
+                name: profile.name,
+                picture: profile.picture,
+                googleId: profile.sub
+              });
+
+              setIsLoading(false);
+              if (res.success) {
+                if (onSuccess) onSuccess();
+                onClose();
+              } else {
+                setErrorMsg(res.error || 'Login failed in D1 database');
+              }
+            } catch (fetchErr: any) {
+              setIsLoading(false);
+              setErrorMsg(fetchErr.message || 'Failed to fetch user data');
+            }
+          } else {
+            setIsLoading(false);
+          }
+        }
+      });
+
+      tokenClient.requestAccessToken();
+    } catch (popupErr: any) {
+      setIsLoading(false);
+      setErrorMsg(popupErr.message || 'Google Popup failed to open');
+    }
+  };
+
+  const handleSaveClientId = (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanId = inputClientId.trim();
+    if (!cleanId) {
+      setErrorMsg('กรุณากรอก Client ID');
+      return;
+    }
+    setActiveClientId(cleanId);
+    localStorage.setItem('resort_google_client_id', cleanId);
+    setShowClientIdInput(false);
+    setErrorMsg(null);
+  };
+
+  const copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedText(label);
+    setTimeout(() => setCopiedText(null), 2000);
+  };
 
   // 1-Click Fast Accounts for immediate testing & demonstration
   const demoAccounts = [
@@ -172,7 +274,7 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
         {/* Modal Header */}
         <div className="p-6 pb-4 border-b border-slate-100 flex items-start justify-between bg-gradient-to-b from-slate-50 to-white">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-white border border-slate-200/80 shadow-xs flex items-center justify-center p-2.5">
+            <div className="w-12 h-12 rounded-2xl bg-white border border-slate-200/80 shadow-xs flex items-center justify-center p-2.5 shrink-0">
               <svg className="w-full h-full" viewBox="0 0 24 24">
                 <path
                   fill="#4285F4"
@@ -194,15 +296,15 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
             </div>
             <div>
               <h3 className="text-lg font-bold text-slate-900 tracking-tight flex items-center gap-1.5">
-                <span>{isEn ? 'Sign in with Google' : 'เข้าสู่ระบบด้วย Google'}</span>
+                <span>{isEn ? 'Google Account Login' : 'เข้าสู่ระบบด้วย Google'}</span>
                 <span className="text-[10px] bg-teal-50 text-teal-700 font-semibold px-2 py-0.5 rounded-full border border-teal-200">
                   D1 Cloudflare
                 </span>
               </h3>
               <p className="text-xs text-slate-500">
                 {isEn 
-                  ? 'Secure single sign-on with automatic role assignment' 
-                  : 'ระบบยืนยันตัวตนอัตโนมัติ บันทึกข้อมูลบน Cloudflare D1'}
+                  ? 'Sign in via Google OAuth popup & sync to D1 database' 
+                  : 'ยืนยันตัวตนผ่าน Google OAuth และบันทึกลง Cloudflare D1'}
               </p>
             </div>
           </div>
@@ -224,29 +326,156 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
             </div>
           )}
 
-          {/* Real Google One-Tap / Button (if client ID configured) */}
-          {googleClientId && (
-            <div className="space-y-3">
-              <p className="text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                {isEn ? 'Official Google Identity' : 'Google Identity Services'}
-              </p>
-              <div ref={googleBtnRef} className="w-full flex justify-center py-1"></div>
-              <div className="relative flex py-1 items-center">
-                <div className="flex-grow border-t border-slate-200"></div>
-                <span className="flex-shrink mx-3 text-xs text-slate-400 font-medium">
-                  {isEn ? 'or test with instant role profiles' : 'หรือทดสอบผ่านโปรไฟล์ด่วน'}
-                </span>
-                <div className="flex-grow border-t border-slate-200"></div>
-              </div>
+          {/* SECTION 1: REAL GOOGLE POPUP LOGIN */}
+          <div className="p-4 bg-gradient-to-br from-teal-50/50 via-white to-blue-50/40 rounded-2xl border border-teal-200/80 shadow-xs space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                <svg className="w-4 h-4" viewBox="0 0 24 24">
+                  <path
+                    fill="#4285F4"
+                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                  />
+                  <path
+                    fill="#34A853"
+                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                  />
+                  <path
+                    fill="#FBBC05"
+                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                  />
+                  <path
+                    fill="#EA4335"
+                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                  />
+                </svg>
+                {isEn ? 'Official Google OAuth Login' : 'ล็อกอินด้วย Google Account จริง'}
+              </span>
+              <button
+                onClick={() => setShowClientIdInput(!showClientIdInput)}
+                className="text-[11px] text-teal-700 hover:text-teal-900 font-semibold flex items-center gap-1"
+              >
+                <KeyRound className="w-3 h-3" />
+                <span>{activeClientId ? 'ตั้งค่า Client ID' : 'ระบุ Client ID'}</span>
+              </button>
             </div>
-          )}
 
-          {/* 1-Click Fast Accounts List */}
+            {/* Big Google Popup Button */}
+            <button
+              onClick={handleGooglePopupLogin}
+              disabled={isLoading}
+              className="w-full py-3 px-4 bg-white hover:bg-slate-50 text-slate-800 font-bold text-sm rounded-xl border border-slate-300 shadow-xs flex items-center justify-center gap-3 transition-all hover:shadow-md group"
+            >
+              <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
+                <path
+                  fill="#4285F4"
+                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                />
+                <path
+                  fill="#34A853"
+                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                />
+                <path
+                  fill="#FBBC05"
+                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                />
+                <path
+                  fill="#EA4335"
+                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                />
+              </svg>
+              <span>{isLoading ? 'กำลังติดต่อ Google...' : 'เปิดหน้าต่างเลือกบัญชี Google (Popup)'}</span>
+            </button>
+
+            {/* Google Identity Services Rendered Button Container */}
+            {activeClientId && (
+              <div className="flex justify-center pt-1">
+                <div ref={googleBtnRef}></div>
+              </div>
+            )}
+
+            {/* Client ID Setting Form (if expanded or not set) */}
+            {showClientIdInput && (
+              <form onSubmit={handleSaveClientId} className="pt-2 border-t border-teal-100 space-y-2">
+                <label className="text-[11px] font-semibold text-slate-600 block">
+                  Google OAuth 2.0 Client ID:
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    required
+                    value={inputClientId}
+                    onChange={(e) => setInputClientId(e.target.value)}
+                    placeholder="xxxxxx.apps.googleusercontent.com"
+                    className="flex-1 px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-xl font-mono focus:outline-hidden focus:ring-2 focus:ring-teal-500"
+                  />
+                  <button
+                    type="submit"
+                    className="px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs rounded-xl shadow-xs transition-colors shrink-0"
+                  >
+                    บันทึก
+                  </button>
+                </div>
+                <p className="text-[10px] text-slate-400">
+                  {activeClientId ? '✓ Client ID กำลังใช้งานอยู่' : 'ใส่ Client ID จาก Google Cloud Console เพื่อเปิดใช้งานหน้าต่าง Google'}
+                </p>
+              </form>
+            )}
+
+            {/* How to get Client ID accordion */}
+            <div className="pt-1">
+              <button
+                type="button"
+                onClick={() => setShowGuide(!showGuide)}
+                className="text-[11px] text-slate-500 hover:text-slate-800 flex items-center justify-between w-full font-medium"
+              >
+                <span>วิธีขอ Google Client ID ฟรี (ใช้เวลา 2 นาที)</span>
+                {showGuide ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              </button>
+
+              {showGuide && (
+                <div className="mt-2.5 p-3 bg-white rounded-xl border border-slate-200 text-[11px] text-slate-600 space-y-2">
+                  <p>1. เข้าไปที่ <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noreferrer" className="text-teal-600 underline font-semibold inline-flex items-center gap-0.5">Google Cloud Console <ExternalLink className="w-3 h-3" /></a></p>
+                  <p>2. คลิก <strong>+ CREATE CREDENTIALS</strong> &gt; <strong>OAuth client ID</strong> (เลือกชนิด Web application)</p>
+                  <div className="space-y-1">
+                    <p className="font-semibold text-slate-800">3. ช่อง Authorized JavaScript origins ใส่:</p>
+                    <div className="flex items-center justify-between bg-slate-50 p-1.5 rounded-lg border border-slate-200 font-mono text-[10px]">
+                      <span className="truncate">{originUrl}</span>
+                      <button
+                        type="button"
+                        onClick={() => copyToClipboard(originUrl, 'origin')}
+                        className="text-teal-600 hover:text-teal-800 p-1"
+                        title="คัดลอก"
+                      >
+                        {copiedText === 'origin' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="font-semibold text-slate-800">4. ช่อง Authorized redirect URIs ใส่:</p>
+                    <div className="flex items-center justify-between bg-slate-50 p-1.5 rounded-lg border border-slate-200 font-mono text-[10px]">
+                      <span className="truncate">{originUrl}</span>
+                      <button
+                        type="button"
+                        onClick={() => copyToClipboard(originUrl, 'redirect')}
+                        className="text-teal-600 hover:text-teal-800 p-1"
+                        title="คัดลอก"
+                      >
+                        {copiedText === 'redirect' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
+                  </div>
+                  <p>5. คัดลอก <strong>Client ID</strong> มาวางในช่องด้านบน หรือแจ้งในแชทนี้ได้เลยครับ</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* SECTION 2: 1-CLICK FAST ACCOUNTS FOR IMMEDIATE TESTING */}
           <div className="space-y-2.5">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                {isEn ? '1-Click Test Google Accounts' : 'เลือกเข้าสู่ระบบด่วน 1-Click'}
+                {isEn ? 'Or Test with 1-Click Fast Profiles' : 'หรือทดสอบด่วนด้วยโปรไฟล์ตัวอย่าง'}
               </span>
               <span className="text-[11px] text-slate-400">
                 {isEn ? 'Instant D1 Sync' : 'ซิงค์ D1 ทันที'}
