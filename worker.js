@@ -72,8 +72,22 @@ export default {
           return new Response(JSON.stringify(results), { headers: corsHeaders });
         }
 
-        // GET /api/users - List all users (For Manager/Admin dashboard)
+        // GET /api/users - List all users (OWASP A01: Strict Admin Only)
         if (url.pathname === '/api/users') {
+          const adminEmail = (request.headers.get('X-Admin-Email') || '').toLowerCase().trim();
+          const isManager = (
+            adminEmail === '674295027@parichat.skru.ac.th' ||
+            adminEmail.endsWith('@parichat.skru.ac.th') ||
+            adminEmail.startsWith('admin')
+          );
+
+          if (!isManager) {
+            return new Response(
+              JSON.stringify({ error: '403 Forbidden: Admin privileges required to view D1 user database' }),
+              { status: 403, headers: corsHeaders }
+            );
+          }
+
           const { results } = await env.DB.prepare(
             'SELECT id, email, name, picture, role, google_id, created_at, last_login_at FROM users ORDER BY last_login_at DESC'
           ).all();

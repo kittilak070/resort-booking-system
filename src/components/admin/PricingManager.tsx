@@ -10,7 +10,8 @@ import {
 export const PricingManager: React.FC = () => {
   const { 
     stats, bookings, promoCodes, addPromoCode, 
-    togglePromoCode, maintenanceIssues, resolveMaintenance 
+    togglePromoCode, maintenanceIssues, resolveMaintenance,
+    currentUser, setActiveRole 
   } = useResort();
 
   const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'PROMOS' | 'MAINTENANCE' | 'FINANCIAL' | 'USERS'>('OVERVIEW');
@@ -20,7 +21,11 @@ export const PricingManager: React.FC = () => {
   const fetchUsers = async () => {
     setLoadingUsers(true);
     try {
-      const res = await fetch('/api/users');
+      const res = await fetch('/api/users', {
+        headers: {
+          'X-Admin-Email': currentUser?.email || ''
+        }
+      });
       if (res.ok) {
         const data = await res.json();
         setD1Users(Array.isArray(data) ? data : (data.users || []));
@@ -31,6 +36,27 @@ export const PricingManager: React.FC = () => {
       setLoadingUsers(false);
     }
   };
+
+  // Defense-in-depth: Block unauthorized users immediately
+  if (currentUser?.role !== 'MANAGER') {
+    return (
+      <div className="bg-white p-8 sm:p-12 rounded-3xl border border-red-200 text-center max-w-lg mx-auto shadow-xl my-8">
+        <div className="w-16 h-16 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto mb-4">
+          <ShieldCheck className="w-8 h-8" />
+        </div>
+        <h3 className="text-xl font-bold text-slate-900 mb-2">403 Access Denied</h3>
+        <p className="text-sm text-slate-600 mb-6 leading-relaxed">
+          ส่วนนี้สงวนสิทธิ์เฉพาะผู้จัดการรีสอร์ท (Admin/Manager) เท่านั้น ห้ามผู้ใช้ทั่วไปหรือลูกค้าเข้าถึง
+        </p>
+        <button
+          onClick={() => setActiveRole('GUEST')}
+          className="px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-xs transition-colors"
+        >
+          กลับสู่หน้าหลัก
+        </button>
+      </div>
+    );
+  }
 
   useEffect(() => {
     if (activeTab === 'USERS') {

@@ -4,7 +4,7 @@ import { UserRole } from '../types';
 import { GoogleAuthModal } from './common/GoogleAuthModal';
 import { 
   Palmtree, User, Hotel, Sparkles, BarChart3, 
-  RefreshCw, Search, Bell, Lock, Unlock, LogOut 
+  RefreshCw, Search, Bell, LogOut 
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -16,7 +16,6 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenMyBookings, onOpenNotifica
   const { 
     activeRole, setActiveRole, resetAllData, 
     language, setLanguage, notifications,
-    isStaffAuthenticated, logoutStaff,
     currentUser, logoutUser 
   } = useResort();
 
@@ -26,7 +25,9 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenMyBookings, onOpenNotifica
   const [showUserDropdown, setShowUserDropdown] = useState<boolean>(false);
   const [pendingRole, setPendingRole] = useState<UserRole | null>(null);
 
-  const roleOptions: { 
+  const userRole = currentUser?.role || 'GUEST';
+
+  const allRoleOptions: { 
     role: UserRole; 
     shortLabel: string; 
     fullLabel: string; 
@@ -58,18 +59,30 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenMyBookings, onOpenNotifica
     }
   ];
 
+  // Restrict visible roles strictly based on user's verified role (Guests cannot see Staff/Admin)
+  const visibleRoles = allRoleOptions.filter(item => {
+    if (item.role === 'GUEST') return true;
+    if (userRole === 'MANAGER') return true;
+    if (userRole === 'FRONT_DESK' && item.role === 'FRONT_DESK') return true;
+    if (userRole === 'HOUSEKEEPER' && item.role === 'HOUSEKEEPER') return true;
+    return false;
+  });
+
   const handleRoleSelect = (role: UserRole) => {
     if (role === 'GUEST') {
       setActiveRole('GUEST');
       return;
     }
 
-    if (isStaffAuthenticated) {
+    // Only allow if user possesses the authorized role
+    if (userRole === 'MANAGER' || userRole === role) {
       setActiveRole(role);
-    } else {
-      setPendingRole(role);
-      setShowGoogleModal(true);
+      return;
     }
+
+    // Otherwise prompt for staff/admin Google login
+    setPendingRole(role);
+    setShowGoogleModal(true);
   };
 
   return (
@@ -242,48 +255,29 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenMyBookings, onOpenNotifica
                 </button>
               )}
 
-              {/* Staff Authentication Status & Lock Button */}
-              {isStaffAuthenticated && (
-                <button
-                  onClick={logoutStaff}
-                  className="px-2 sm:px-2.5 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-xl text-xs font-bold flex items-center gap-1 transition-colors whitespace-nowrap shrink-0"
-                  title={isEn ? 'Lock staff session & return to guest view' : 'ล็อกเซสชันเจ้าหน้าที่ และกลับสู่มุมมองลูกค้า'}
-                >
-                  <Lock className="w-3.5 h-3.5 text-red-600 shrink-0" />
-                  <span className="whitespace-nowrap hidden sm:inline">
-                    {isEn ? 'Lock' : 'ล็อกพนักงาน'}
-                  </span>
-                </button>
+              {/* Role Options - Only visible to authorized Staff & Manager */}
+              {visibleRoles.length > 1 && (
+                <nav className="flex items-center p-1 bg-slate-100 rounded-xl border border-slate-200/80 shrink-0">
+                  {visibleRoles.map(item => {
+                    const isActive = activeRole === item.role;
+                    return (
+                      <button
+                        key={item.role}
+                        onClick={() => handleRoleSelect(item.role)}
+                        title={item.fullLabel}
+                        className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-200 whitespace-nowrap shrink-0 ${
+                          isActive
+                            ? 'bg-white text-teal-800 shadow-xs font-bold border border-slate-200/60'
+                            : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                        }`}
+                      >
+                        <span className={isActive ? 'text-teal-600' : 'text-slate-400'}>{item.icon}</span>
+                        <span className="whitespace-nowrap">{item.shortLabel}</span>
+                      </button>
+                    );
+                  })}
+                </nav>
               )}
-
-              {/* Role Options */}
-              <nav className="flex items-center p-1 bg-slate-100 rounded-xl border border-slate-200/80 shrink-0">
-                {roleOptions.map(item => {
-                  const isActive = activeRole === item.role;
-                  const isStaffRole = item.role !== 'GUEST';
-                  return (
-                    <button
-                      key={item.role}
-                      onClick={() => handleRoleSelect(item.role)}
-                      title={item.fullLabel}
-                      className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-medium rounded-lg transition-all duration-200 whitespace-nowrap shrink-0 ${
-                        isActive
-                          ? 'bg-white text-teal-800 shadow-xs font-bold border border-slate-200/60'
-                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
-                      }`}
-                    >
-                      <span className={isActive ? 'text-teal-600' : 'text-slate-400'}>{item.icon}</span>
-                      <span className="whitespace-nowrap">{item.shortLabel}</span>
-                      {isStaffRole && !isStaffAuthenticated && (
-                        <Lock className="w-2.5 h-2.5 text-slate-400 ml-0.5 shrink-0" />
-                      )}
-                      {isStaffRole && isStaffAuthenticated && (
-                        <Unlock className="w-2.5 h-2.5 text-teal-600 ml-0.5 shrink-0" />
-                      )}
-                    </button>
-                  );
-                })}
-              </nav>
 
               {/* Reset Button */}
               <button
@@ -319,7 +313,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenMyBookings, onOpenNotifica
           }}
           requiredRoleName={
             pendingRole
-              ? roleOptions.find(r => r.role === pendingRole)?.fullLabel
+              ? allRoleOptions.find(r => r.role === pendingRole)?.fullLabel
               : undefined
           }
         />

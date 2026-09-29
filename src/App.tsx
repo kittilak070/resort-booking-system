@@ -16,7 +16,7 @@ import { Room } from './types';
 import { Palmtree, ShieldCheck, Heart, Sparkles, Phone, Mail, MapPin, Star } from 'lucide-react';
 
 const MainAppContent: React.FC = () => {
-  const { rooms, activeRole, language, currentUser } = useResort();
+  const { rooms, activeRole, setActiveRole, language, currentUser } = useResort();
   const isEn = language === 'en';
 
   // Search filter states
@@ -54,6 +54,17 @@ const MainAppContent: React.FC = () => {
     }
     return true;
   });
+
+  // Defensive auto-reset: Enforce role-based access control
+  React.useEffect(() => {
+    if (activeRole === 'MANAGER' && currentUser?.role !== 'MANAGER') {
+      setActiveRole('GUEST');
+    } else if (activeRole === 'FRONT_DESK' && currentUser?.role !== 'FRONT_DESK' && currentUser?.role !== 'MANAGER') {
+      setActiveRole('GUEST');
+    } else if (activeRole === 'HOUSEKEEPER' && currentUser?.role !== 'HOUSEKEEPER' && currentUser?.role !== 'MANAGER') {
+      setActiveRole('GUEST');
+    }
+  }, [currentUser, activeRole, setActiveRole]);
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col justify-between">
@@ -128,19 +139,79 @@ const MainAppContent: React.FC = () => {
             </div>
           )}
 
-          {/* FRONT DESK VIEW */}
+          {/* FRONT DESK VIEW (Staff & Manager Only) */}
           {activeRole === 'FRONT_DESK' && (
-            <RoomTimelineGrid />
+            (currentUser?.role === 'FRONT_DESK' || currentUser?.role === 'MANAGER') ? (
+              <RoomTimelineGrid />
+            ) : (
+              <div className="bg-white p-8 sm:p-12 rounded-3xl border border-red-200 text-center max-w-lg mx-auto shadow-xl my-8">
+                <div className="w-16 h-16 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto mb-4">
+                  <ShieldCheck className="w-8 h-8" />
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 mb-2">403 Access Denied</h3>
+                <p className="text-sm text-slate-600 mb-6 leading-relaxed">
+                  {isEn 
+                    ? 'Front Desk operations are restricted to authorized front desk staff and managers only.' 
+                    : 'ส่วนงานต้อนรับส่วนหน้า (Front Desk) สงวนสิทธิ์เฉพาะเจ้าหน้าที่แผนกต้อนรับและผู้จัดการเท่านั้น ห้ามผู้ใช้ทั่วไปเข้าถึง'}
+                </p>
+                <button
+                  onClick={() => setActiveRole('GUEST')}
+                  className="px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-xs transition-colors"
+                >
+                  {isEn ? 'Return to Home' : 'กลับสู่หน้าหลัก'}
+                </button>
+              </div>
+            )
           )}
 
-          {/* HOUSEKEEPING VIEW */}
+          {/* HOUSEKEEPING VIEW (Housekeeping & Manager Only) */}
           {activeRole === 'HOUSEKEEPER' && (
-            <HousekeepingMobileView />
+            (currentUser?.role === 'HOUSEKEEPER' || currentUser?.role === 'MANAGER') ? (
+              <HousekeepingMobileView />
+            ) : (
+              <div className="bg-white p-8 sm:p-12 rounded-3xl border border-red-200 text-center max-w-lg mx-auto shadow-xl my-8">
+                <div className="w-16 h-16 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto mb-4">
+                  <ShieldCheck className="w-8 h-8" />
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 mb-2">403 Access Denied</h3>
+                <p className="text-sm text-slate-600 mb-6 leading-relaxed">
+                  {isEn 
+                    ? 'Housekeeping operations are restricted to authorized housekeeping staff and managers only.' 
+                    : 'ส่วนงานแม่บ้าน (Housekeeping) สงวนสิทธิ์เฉพาะเจ้าหน้าที่แม่บ้านและผู้จัดการเท่านั้น ห้ามผู้ใช้ทั่วไปเข้าถึง'}
+                </p>
+                <button
+                  onClick={() => setActiveRole('GUEST')}
+                  className="px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-xs transition-colors"
+                >
+                  {isEn ? 'Return to Home' : 'กลับสู่หน้าหลัก'}
+                </button>
+              </div>
+            )
           )}
 
-          {/* ADMIN / MANAGER VIEW */}
+          {/* ADMIN / MANAGER VIEW (Strictly Manager Only) */}
           {activeRole === 'MANAGER' && (
-            <PricingManager />
+            currentUser?.role === 'MANAGER' ? (
+              <PricingManager />
+            ) : (
+              <div className="bg-white p-8 sm:p-12 rounded-3xl border border-red-200 text-center max-w-lg mx-auto shadow-xl my-8">
+                <div className="w-16 h-16 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto mb-4">
+                  <ShieldCheck className="w-8 h-8" />
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 mb-2">403 Access Denied</h3>
+                <p className="text-sm text-slate-600 mb-6 leading-relaxed">
+                  {isEn 
+                    ? 'Admin & Management section is restricted to Resort Managers and Administrators only.' 
+                    : 'ส่วนผู้ดูแลระบบและการบริหารจัดการ (Admin) สงวนสิทธิ์เฉพาะผู้จัดการรีสอร์ทเท่านั้น ห้ามผู้ใช้ทั่วไปเข้าถึง'}
+                </p>
+                <button
+                  onClick={() => setActiveRole('GUEST')}
+                  className="px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-xs transition-colors"
+                >
+                  {isEn ? 'Return to Home' : 'กลับสู่หน้าหลัก'}
+                </button>
+              </div>
+            )
           )}
 
         </main>
