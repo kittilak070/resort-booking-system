@@ -19,15 +19,16 @@ export default {
         return new Response(null, { headers: corsHeaders });
       }
 
-      // Helper to verify manager access (Hardcoded Whitelist OR Manager Role in Cloudflare D1)
+      // Designated Super Admins Whitelist (Explicit email address only - NO wildcard domain)
+      const DESIGNATED_ADMIN_EMAILS = [
+        '674295027@parichat.skru.ac.th'
+      ];
+
+      // Helper to verify manager access (Explicit Whitelist OR D1 Assigned Role)
       const verifyManagerAccess = async (rawEmail) => {
         if (!rawEmail) return false;
         const emailLower = rawEmail.toLowerCase().trim();
-        if (
-          emailLower === '674295027@parichat.skru.ac.th' ||
-          emailLower.endsWith('@parichat.skru.ac.th') ||
-          emailLower.startsWith('admin')
-        ) {
+        if (DESIGNATED_ADMIN_EMAILS.includes(emailLower)) {
           return true;
         }
         try {
@@ -196,19 +197,11 @@ export default {
             );
           }
 
-          // 3. Determine Role based on staff whitelist / domain policy
+          // 3. Determine initial Role: strictly GUEST unless explicitly on the designated admin whitelist
           const emailLower = email.toLowerCase().trim();
           let role = 'GUEST';
-          if (
-            emailLower === '674295027@parichat.skru.ac.th' ||
-            emailLower.endsWith('@parichat.skru.ac.th') ||
-            emailLower.startsWith('admin')
-          ) {
+          if (DESIGNATED_ADMIN_EMAILS.includes(emailLower)) {
             role = 'MANAGER';
-          } else if (emailLower.includes('frontdesk') || emailLower.includes('reception')) {
-            role = 'FRONT_DESK';
-          } else if (emailLower.includes('clean') || emailLower.includes('housekeeper') || emailLower.includes('maid')) {
-            role = 'HOUSEKEEPER';
           }
 
           // 4. Upsert user into Cloudflare D1

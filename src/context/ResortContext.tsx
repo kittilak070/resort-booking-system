@@ -203,17 +203,9 @@ export const ResortProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       // Fallback for offline or local preview
       if (userInfo && userInfo.email) {
         let role: UserRole = userInfo.role || 'GUEST';
-        const emailLower = userInfo.email.toLowerCase();
-        if (
-          emailLower === '674295027@parichat.skru.ac.th' ||
-          emailLower.endsWith('@parichat.skru.ac.th') ||
-          emailLower.startsWith('admin')
-        ) {
+        const emailLower = userInfo.email.toLowerCase().trim();
+        if (emailLower === '674295027@parichat.skru.ac.th') {
           role = 'MANAGER';
-        } else if (emailLower.includes('frontdesk')) {
-          role = 'FRONT_DESK';
-        } else if (emailLower.includes('clean') || emailLower.includes('housekeeper')) {
-          role = 'HOUSEKEEPER';
         }
 
         const fallbackUser: UserProfile = {

@@ -754,8 +754,8 @@ export const PricingManager: React.FC = () => {
                 เมื่อผู้ดูแลคนนั้นรีเฟรชหน้าจอ จะได้รับสิทธิ์เข้าใช้งานระบบหลังบ้านและเมนูผู้จัดการได้ทันที
               </li>
             </ol>
-            <p className="text-purple-600 text-[11px] pt-1 border-t border-purple-200/60 font-medium">
-              *เคล็ดลับ: หากใช้อีเมลโดเมนมหาวิทยาลัย <code>@parichat.skru.ac.th</code> ระบบจะแต่งตั้งสิทธิ์เป็นผู้จัดการ (MANAGER) ให้อัตโนมัติทันที
+            <p className="text-slate-600 text-[11px] pt-1 border-t border-purple-200/60 font-medium">
+              *นโยบายความปลอดภัย: ผู้ใช้ใหม่ทุกคน (รวมถึงอีเมลมหาวิทยาลัย) จะได้รับสิทธิ์เป็นลูกค้า (GUEST) เสมอ มีเพียงอีเมลที่แอดมินกำหนดหรือแต่งตั้งเท่านั้นที่จะได้เป็นผู้ดูแล
             </p>
           </div>
 
