@@ -4,7 +4,7 @@ import { PromoCode } from '../../types';
 import { 
   BarChart3, TrendingUp, DollarSign, Bed, 
   Users, Cloud, Download, Tag, Plus, Wrench, Check,
-  RefreshCw, ShieldCheck, UserCheck
+  RefreshCw, ShieldCheck, UserCheck, Sparkles
 } from 'lucide-react';
 
 export const PricingManager: React.FC = () => {
@@ -17,6 +17,8 @@ export const PricingManager: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'PROMOS' | 'MAINTENANCE' | 'FINANCIAL' | 'USERS'>('OVERVIEW');
   const [d1Users, setD1Users] = useState<any[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
+  const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
+  const [roleMessage, setRoleMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
 
   const fetchUsers = async () => {
     setLoadingUsers(true);
@@ -34,6 +36,42 @@ export const PricingManager: React.FC = () => {
       console.error('Error fetching users:', err);
     } finally {
       setLoadingUsers(false);
+    }
+  };
+
+  const handleUpdateUserRole = async (userId: string, newRole: string) => {
+    setUpdatingUserId(userId);
+    setRoleMessage(null);
+    try {
+      const res = await fetch('/api/users/role', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Admin-Email': currentUser?.email || ''
+        },
+        body: JSON.stringify({ userId, role: newRole })
+      });
+      if (res.ok) {
+        setD1Users(prev => prev.map(u => u.id === userId ? { ...u, role: newRole } : u));
+        setRoleMessage({
+          text: `เปลี่ยนบทบาทผู้ใช้เป็น "${newRole}" เรียบร้อยแล้ว (บันทึกลง Cloudflare D1 สำเร็จ)`,
+          type: 'success'
+        });
+        setTimeout(() => setRoleMessage(null), 5000);
+      } else {
+        const data = await res.json();
+        setRoleMessage({
+          text: data.error || 'ไม่สามารถเปลี่ยนสิทธิ์ได้',
+          type: 'error'
+        });
+      }
+    } catch (err: any) {
+      setRoleMessage({
+        text: err.message || 'เกิดข้อผิดพลาดในการเชื่อมต่อ',
+        type: 'error'
+      });
+    } finally {
+      setUpdatingUserId(null);
     }
   };
 
@@ -699,6 +737,47 @@ export const PricingManager: React.FC = () => {
             </button>
           </div>
 
+          {/* Quick Guide Card: How to add more Admins */}
+          <div className="p-4 bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 rounded-2xl text-xs space-y-2 shadow-xs">
+            <div className="font-bold text-purple-900 flex items-center gap-1.5 text-sm">
+              <Sparkles className="w-4 h-4 text-purple-600" />
+              <span>วิธีเพิ่มผู้ดูแลระบบ (Admin) หรือพนักงานเพิ่มเติม:</span>
+            </div>
+            <ol className="list-decimal list-inside space-y-1 text-slate-700 leading-relaxed font-medium">
+              <li>
+                บอกให้ผู้ดูแลคนใหม่เข้าเว็บไซต์รีสอร์ท แล้วกดปุ่ม <strong>"เข้าสู่ระบบด้วย Google"</strong> 1 ครั้ง
+              </li>
+              <li>
+                แอดมินเข้ามาที่แท็บนี้ (ฐานข้อมูลสมาชิก D1) แล้วเลือกเปลี่ยนสิทธิ์ในช่อง <strong>"จัดการสิทธิ์"</strong> เป็น <strong>👑 ผู้จัดการ/แอดมิน (MANAGER)</strong>
+              </li>
+              <li>
+                เมื่อผู้ดูแลคนนั้นรีเฟรชหน้าจอ จะได้รับสิทธิ์เข้าใช้งานระบบหลังบ้านและเมนูผู้จัดการได้ทันที
+              </li>
+            </ol>
+            <p className="text-purple-600 text-[11px] pt-1 border-t border-purple-200/60 font-medium">
+              *เคล็ดลับ: หากใช้อีเมลโดเมนมหาวิทยาลัย <code>@parichat.skru.ac.th</code> ระบบจะแต่งตั้งสิทธิ์เป็นผู้จัดการ (MANAGER) ให้อัตโนมัติทันที
+            </p>
+          </div>
+
+          {/* Action Message Alert */}
+          {roleMessage && (
+            <div
+              className={`p-3.5 rounded-xl text-xs font-bold flex items-center justify-between border ${
+                roleMessage.type === 'success'
+                  ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                  : 'bg-red-50 text-red-800 border-red-200'
+              }`}
+            >
+              <span>{roleMessage.text}</span>
+              <button
+                onClick={() => setRoleMessage(null)}
+                className="text-slate-400 hover:text-slate-600 font-bold ml-2"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
           {loadingUsers ? (
             <div className="bg-white p-12 text-center rounded-2xl border border-slate-200">
               <RefreshCw className="w-6 h-6 animate-spin text-teal-600 mx-auto mb-2" />
@@ -721,6 +800,7 @@ export const PricingManager: React.FC = () => {
                       <th className="px-5 py-3.5">ผู้ใช้งาน (User)</th>
                       <th className="px-5 py-3.5">อีเมล (Email)</th>
                       <th className="px-5 py-3.5">สิทธิ์การใช้งาน (Role)</th>
+                      <th className="px-5 py-3.5">จัดการสิทธิ์ (Change Role)</th>
                       <th className="px-5 py-3.5">Google ID</th>
                       <th className="px-5 py-3.5">เข้าสู่ระบบล่าสุด (Last Login)</th>
                     </tr>
@@ -756,6 +836,37 @@ export const PricingManager: React.FC = () => {
                           >
                             {user.role}
                           </span>
+                        </td>
+                        <td className="px-5 py-3.5">
+                          <div className="flex items-center gap-2">
+                            <select
+                              value={user.role}
+                              disabled={user.email === '674295027@parichat.skru.ac.th' || updatingUserId === user.id}
+                              onChange={(e) => handleUpdateUserRole(user.id, e.target.value)}
+                              className={`text-[11px] font-bold px-2 py-1 rounded-lg border transition-all cursor-pointer ${
+                                user.role === 'MANAGER'
+                                  ? 'bg-purple-50 text-purple-900 border-purple-300'
+                                  : user.role === 'FRONT_DESK'
+                                  ? 'bg-teal-50 text-teal-800 border-teal-300'
+                                  : user.role === 'HOUSEKEEPER'
+                                  ? 'bg-amber-50 text-amber-800 border-amber-300'
+                                  : 'bg-slate-50 text-slate-700 border-slate-300'
+                              } disabled:opacity-60 disabled:cursor-not-allowed`}
+                              title={
+                                user.email === '674295027@parichat.skru.ac.th'
+                                  ? 'บัญชีผู้จัดการสูงสุด (Root Super Admin)'
+                                  : 'เลือกเปลี่ยนบทบาทผู้ใช้'
+                              }
+                            >
+                              <option value="MANAGER">👑 ผู้จัดการ (MANAGER)</option>
+                              <option value="FRONT_DESK">🛎️ แผนกต้อนรับ (FRONT_DESK)</option>
+                              <option value="HOUSEKEEPER">🧹 แม่บ้าน (HOUSEKEEPER)</option>
+                              <option value="GUEST">👤 ลูกค้าทั่วไป (GUEST)</option>
+                            </select>
+                            {updatingUserId === user.id && (
+                              <RefreshCw className="w-3.5 h-3.5 animate-spin text-teal-600 shrink-0" />
+                            )}
+                          </div>
                         </td>
                         <td className="px-5 py-3.5 font-mono text-slate-500 text-[11px]">
                           {user.google_id || '-'}

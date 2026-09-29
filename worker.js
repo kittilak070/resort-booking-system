@@ -9,8 +9,8 @@ export default {
       const corsHeaders = {
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Admin-Email',
         'X-Content-Type-Options': 'nosniff',
         'X-Frame-Options': 'DENY'
       };
@@ -18,6 +18,27 @@ export default {
       if (request.method === 'OPTIONS') {
         return new Response(null, { headers: corsHeaders });
       }
+
+      // Helper to verify manager access (Hardcoded Whitelist OR Manager Role in Cloudflare D1)
+      const verifyManagerAccess = async (rawEmail) => {
+        if (!rawEmail) return false;
+        const emailLower = rawEmail.toLowerCase().trim();
+        if (
+          emailLower === '674295027@parichat.skru.ac.th' ||
+          emailLower.endsWith('@parichat.skru.ac.th') ||
+          emailLower.startsWith('admin')
+        ) {
+          return true;
+        }
+        try {
+          const userRec = await env.DB.prepare(
+            'SELECT role FROM users WHERE email = ? AND role = "MANAGER"'
+          ).bind(emailLower).first();
+          return Boolean(userRec);
+        } catch {
+          return false;
+        }
+      };
 
       try {
         // GET /api/health - Database Health & Statistics
@@ -74,12 +95,8 @@ export default {
 
         // GET /api/users - List all users (OWASP A01: Strict Admin Only)
         if (url.pathname === '/api/users') {
-          const adminEmail = (request.headers.get('X-Admin-Email') || '').toLowerCase().trim();
-          const isManager = (
-            adminEmail === '674295027@parichat.skru.ac.th' ||
-            adminEmail.endsWith('@parichat.skru.ac.th') ||
-            adminEmail.startsWith('admin')
-          );
+          const adminEmail = request.headers.get('X-Admin-Email') || '';
+          const isManager = await verifyManagerAccess(adminEmail);
 
           if (!isManager) {
             return new Response(
@@ -92,6 +109,38 @@ export default {
             'SELECT id, email, name, picture, role, google_id, created_at, last_login_at FROM users ORDER BY last_login_at DESC'
           ).all();
           return new Response(JSON.stringify(results), { headers: corsHeaders });
+        }
+
+        // POST /api/users/role - Promote/Demote user role in D1 (OWASP A01: Strict Admin Only)
+        if (url.pathname === '/api/users/role' && (request.method === 'POST' || request.method === 'PATCH')) {
+          const adminEmail = request.headers.get('X-Admin-Email') || '';
+          const isManager = await verifyManagerAccess(adminEmail);
+
+          if (!isManager) {
+            return new Response(
+              JSON.stringify({ error: '403 Forbidden: Only resort managers can update user roles' }),
+              { status: 403, headers: corsHeaders }
+            );
+          }
+
+          const body = await request.json().catch(() => ({}));
+          const { userId, role } = body;
+          const validRoles = ['GUEST', 'FRONT_DESK', 'HOUSEKEEPER', 'MANAGER'];
+
+          if (!userId || !validRoles.includes(role)) {
+            return new Response(
+              JSON.stringify({ error: 'Invalid userId or role. Allowed: GUEST, FRONT_DESK, HOUSEKEEPER, MANAGER' }),
+              { status: 400, headers: corsHeaders }
+            );
+          }
+
+          await env.DB.prepare('UPDATE users SET role = ? WHERE id = ?').bind(role, userId).run();
+          const updatedUser = await env.DB.prepare('SELECT id, email, name, picture, role, google_id, created_at, last_login_at FROM users WHERE id = ?').bind(userId).first();
+
+          return new Response(
+            JSON.stringify({ success: true, user: updatedUser }),
+            { headers: corsHeaders }
+          );
         }
 
         // POST /api/auth/google - Authenticate or Upsert Google User in D1
@@ -171,6 +220,10 @@ export default {
               name = excluded.name,
               picture = COALESCE(excluded.picture, users.picture),
               google_id = COALESCE(excluded.google_id, users.google_id),
+              role = CASE 
+                WHEN excluded.role = 'MANAGER' THEN 'MANAGER' 
+                ELSE users.role 
+              END,
               last_login_at = CURRENT_TIMESTAMP
           `).bind(generatedId, emailLower, name, picture, role, googleId).run();
 
