@@ -5,6 +5,7 @@ import { HeroBanner } from './components/guest/HeroBanner';
 import { SearchFilter } from './components/guest/SearchFilter';
 import { RoomCard } from './components/guest/RoomCard';
 import { BookingModal } from './components/guest/BookingModal';
+import { MyBookingLookup } from './components/guest/MyBookingLookup';
 import { RoomTimelineGrid } from './components/frontdesk/RoomTimelineGrid';
 import { HousekeepingMobileView } from './components/housekeeping/HousekeepingMobileView';
 import { PricingManager } from './components/admin/PricingManager';
@@ -25,6 +26,7 @@ const MainAppContent: React.FC = () => {
 
   // Selected room for booking
   const [selectedRoomForBooking, setSelectedRoomForBooking] = useState<Room | null>(null);
+  const [showMyBookingLookup, setShowMyBookingLookup] = useState<boolean>(false);
 
   // Filter rooms based on category & capacity
   const filteredRooms = rooms.filter(room => {
@@ -37,7 +39,7 @@ const MainAppContent: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col justify-between">
       <div>
-        <Navbar />
+        <Navbar onOpenMyBookings={() => setShowMyBookingLookup(true)} />
 
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           
@@ -114,6 +116,11 @@ const MainAppContent: React.FC = () => {
           initialCheckOut={checkOutDate}
           initialGuests={guestsCount}
         />
+      )}
+
+      {/* My Bookings Lookup & Cancellation Modal */}
+      {showMyBookingLookup && (
+        <MyBookingLookup onClose={() => setShowMyBookingLookup(false)} />
       )}
 
       {/* Footer */}

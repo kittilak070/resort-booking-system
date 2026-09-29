@@ -28,6 +28,7 @@ export interface Room {
   amenities: string[];
   status: RoomStatus;
   currentBookingId?: string;
+  maintenanceReason?: string;
 }
 
 export interface AddOn {
@@ -44,6 +45,26 @@ export interface SelectedAddOn {
   name: string;
   price: number;
   quantity: number;
+}
+
+export interface PromoCode {
+  code: string;
+  description: string;
+  discountType: 'PERCENT' | 'FIXED';
+  discountValue: number;
+  minSpend: number;
+  isActive: boolean;
+}
+
+export interface MaintenanceIssue {
+  id: string;
+  roomId: string;
+  roomNumber: string;
+  issueDescription: string;
+  reportedBy: string;
+  reportedAt: string;
+  status: 'PENDING_REPAIR' | 'RESOLVED';
+  resolvedAt?: string;
 }
 
 export interface Booking {
@@ -63,10 +84,11 @@ export interface Booking {
   selectedAddOns: SelectedAddOn[];
   roomPrice: number;
   addOnTotal: number;
+  appliedPromoCode?: string;
   discountAmount: number;
   totalAmount: number;
   status: BookingStatus;
-  paymentMethod: 'PROMPTPAY_QR' | 'CREDIT_CARD';
+  paymentMethod: 'PROMPTPAY_QR' | 'CREDIT_CARD' | 'CASH';
   createdAt: string;
   expiresAt: string; // 15-minute lock ISO
   depositAmount: number; // e.g. 1000
@@ -74,6 +96,9 @@ export interface Booking {
   checkInTime?: string;
   checkOutTime?: string;
   specialRequests?: string;
+  isWalkIn?: boolean;
+  refundAmount?: number;
+  cancellationReason?: string;
 }
 
 export type UserRole = 'GUEST' | 'FRONT_DESK' | 'HOUSEKEEPER' | 'MANAGER';

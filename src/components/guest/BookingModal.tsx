@@ -5,7 +5,7 @@ import confetti from 'canvas-confetti';
 import { 
   X, CheckCircle, Clock, QrCode, ShieldCheck, 
   CreditCard, Flame, Coffee, BedDouble, Waves, 
-  Plus, Minus, ArrowLeft, ArrowRight, Printer
+  Plus, Minus, ArrowLeft, ArrowRight, Printer, Tag
 } from 'lucide-react';
 
 interface BookingModalProps {
@@ -23,7 +23,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   initialCheckOut,
   initialGuests
 }) => {
-  const { addOns, createBooking, confirmPayment, setActiveRole } = useResort();
+  const { addOns, createBooking, confirmPayment, setActiveRole, validatePromoCode } = useResort();
 
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
 
@@ -39,6 +39,12 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const [guestIdCard, setGuestIdCard] = useState('3100500892147');
   const [specialRequests, setSpecialRequests] = useState('ขอเช็คอินช่วง 14:30 น. และขอห้องปลอดบุหรี่');
   const [paymentMethod, setPaymentMethod] = useState<'PROMPTPAY_QR' | 'CREDIT_CARD'>('PROMPTPAY_QR');
+
+  // Promo code states
+  const [promoInput, setPromoInput] = useState('');
+  const [appliedPromo, setAppliedPromo] = useState<string | null>(null);
+  const [discountAmount, setDiscountAmount] = useState<number>(0);
+  const [promoMessage, setPromoMessage] = useState<{ text: string; isError: boolean } | null>(null);
 
   // Selected add-ons
   const [selectedAddOns, setSelectedAddOns] = useState<Record<string, number>>({});
@@ -65,7 +71,22 @@ export const BookingModal: React.FC<BookingModalProps> = ({
     return sum + (item ? item.price * qty : 0);
   }, 0);
 
-  const grandTotal = roomPriceTotal + addOnsTotal;
+  const subtotal = roomPriceTotal + addOnsTotal;
+  const grandTotal = Math.max(0, subtotal - discountAmount);
+
+  const handleApplyPromo = () => {
+    if (!promoInput.trim()) return;
+    const res = validatePromoCode(promoInput, subtotal);
+    if (res.valid) {
+      setAppliedPromo(res.promo?.code || promoInput.toUpperCase());
+      setDiscountAmount(res.discountAmount);
+      setPromoMessage({ text: res.message, isError: false });
+    } else {
+      setAppliedPromo(null);
+      setDiscountAmount(0);
+      setPromoMessage({ text: res.message, isError: true });
+    }
+  };
 
   // Add-on helpers
   const handleAddOnQty = (id: string, delta: number) => {
@@ -119,7 +140,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({
       guestIdCard,
       selectedAddOns: formattedAddons,
       specialRequests,
-      paymentMethod
+      paymentMethod,
+      promoCode: appliedPromo || undefined
     });
 
     if (res.success && res.booking) {
@@ -295,11 +317,55 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                 </div>
               </div>
 
+              {/* Promo Code Input Box */}
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200">
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1.5">
+                  <Tag className="w-3.5 h-3.5 text-teal-600" />
+                  <span>โค้ดส่วนลดพิเศษ (Promo Code)</span>
+                  <span className="text-[10px] text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full border border-teal-200 font-normal">
+                    ลองใช้: HAVEN10, SUMMER500
+                  </span>
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={promoInput}
+                    onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
+                    placeholder="กรอกโค้ดส่วนลด"
+                    className="flex-1 px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold uppercase focus:ring-2 focus:ring-teal-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleApplyPromo}
+                    className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold rounded-xl transition-colors"
+                  >
+                    ใช้โค้ด
+                  </button>
+                </div>
+                {promoMessage && (
+                  <p className={`text-[11px] mt-2 font-medium ${promoMessage.isError ? 'text-red-600' : 'text-emerald-700 font-bold'}`}>
+                    {promoMessage.text}
+                  </p>
+                )}
+              </div>
+
               {/* Total Calculation Bar */}
               <div className="p-4 bg-teal-50 rounded-2xl border border-teal-200 flex items-center justify-between">
                 <div>
-                  <span className="text-xs text-teal-700 block">ยอดรวมทั้งสิ้น (รวมภาษี)</span>
-                  <span className="text-2xl font-black text-teal-900">฿{grandTotal.toLocaleString()}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-teal-700">ยอดรวมทั้งสิ้น (รวมภาษี)</span>
+                    {discountAmount > 0 && (
+                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                        ลดไป ฿{discountAmount.toLocaleString()}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-2xl font-black text-teal-900">฿{grandTotal.toLocaleString()}</span>
+                    {discountAmount > 0 && (
+                      <span className="text-xs text-slate-400 line-through">฿{subtotal.toLocaleString()}</span>
+                    )}
+                  </div>
                 </div>
                 <button
                   onClick={() => setStep(2)}

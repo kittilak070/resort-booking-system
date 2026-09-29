@@ -1,12 +1,17 @@
 import React, { useState } from 'react';
 import { useResort } from '../../context/ResortContext';
 import { Room } from '../../types';
-import { Sparkles, Check, Play, AlertCircle, Camera, CheckSquare } from 'lucide-react';
+import { 
+  Sparkles, Check, Play, AlertCircle, 
+  Wrench, CheckSquare, X, AlertTriangle 
+} from 'lucide-react';
 
 export const HousekeepingMobileView: React.FC = () => {
-  const { rooms, updateRoomStatus, stats } = useResort();
+  const { rooms, updateRoomStatus, reportMaintenance, stats } = useResort();
 
-  const [activeTab, setActiveTab] = useState<'PENDING' | 'CLEANED'>('PENDING');
+  const [activeTab, setActiveTab] = useState<'PENDING' | 'CLEANED' | 'MAINTENANCE'>('PENDING');
+  const [selectedRoomForIssue, setSelectedRoomForIssue] = useState<Room | null>(null);
+  const [issueDescription, setIssueDescription] = useState('แอร์ไม่เย็น มีน้ำหยด');
 
   // Pending tasks: DIRTY or CLEANING
   const pendingRooms = rooms.filter(
@@ -14,8 +19,11 @@ export const HousekeepingMobileView: React.FC = () => {
   );
 
   const cleanedRooms = rooms.filter(r => r.status === 'VACANT_CLEAN');
+  const maintenanceRooms = rooms.filter(r => r.status === 'MAINTENANCE');
 
-  const displayedRooms = activeTab === 'PENDING' ? pendingRooms : cleanedRooms;
+  const displayedRooms = 
+    activeTab === 'PENDING' ? pendingRooms : 
+    activeTab === 'CLEANED' ? cleanedRooms : maintenanceRooms;
 
   const handleStartCleaning = (room: Room) => {
     updateRoomStatus(room.id, 'CLEANING');
@@ -24,6 +32,13 @@ export const HousekeepingMobileView: React.FC = () => {
   const handleFinishCleaning = (room: Room) => {
     updateRoomStatus(room.id, 'VACANT_CLEAN');
     alert(`ห้อง ${room.roomNumber} ทำความสะอาดเสร็จสมบูรณ์! สถานะบนหน้าจอเคาน์เตอร์ต้อนรับปรับเป็นพร้อมรับแขกทันที`);
+  };
+
+  const handleReportIssue = () => {
+    if (!selectedRoomForIssue || !issueDescription) return;
+    reportMaintenance(selectedRoomForIssue.id, issueDescription, 'แม่บ้านกะเช้า');
+    alert(`ส่งแจ้งซ่อมบำรุงห้อง ${selectedRoomForIssue.roomNumber} เรียบร้อย! สถานะห้องถูกปรับเป็น "ปิดซ่อมบำรุง (Maintenance)" บนทุกหน้าจอ`);
+    setSelectedRoomForIssue(null);
   };
 
   return (
@@ -48,7 +63,7 @@ export const HousekeepingMobileView: React.FC = () => {
         </div>
 
         {/* Tab switcher */}
-        <div className="grid grid-cols-2 gap-2 mt-5 p-1 bg-white/10 rounded-xl text-xs font-semibold backdrop-blur-sm">
+        <div className="grid grid-cols-3 gap-1.5 mt-5 p-1 bg-white/10 rounded-xl text-xs font-semibold backdrop-blur-sm">
           <button
             onClick={() => setActiveTab('PENDING')}
             className={`py-2 rounded-lg transition-all ${
@@ -57,7 +72,7 @@ export const HousekeepingMobileView: React.FC = () => {
                 : 'text-teal-100 hover:text-white'
             }`}
           >
-            ต้องทำความสะอาด ({pendingRooms.length})
+            ต้องทำ ({pendingRooms.length})
           </button>
           <button
             onClick={() => setActiveTab('CLEANED')}
@@ -67,7 +82,17 @@ export const HousekeepingMobileView: React.FC = () => {
                 : 'text-teal-100 hover:text-white'
             }`}
           >
-            ห้องสะอาดแล้ว ({cleanedRooms.length})
+            สะอาด ({cleanedRooms.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('MAINTENANCE')}
+            className={`py-2 rounded-lg transition-all ${
+              activeTab === 'MAINTENANCE'
+                ? 'bg-red-500 text-white shadow-sm'
+                : 'text-teal-100 hover:text-white'
+            }`}
+          >
+            แจ้งซ่อม ({maintenanceRooms.length})
           </button>
         </div>
       </div>
@@ -77,10 +102,12 @@ export const HousekeepingMobileView: React.FC = () => {
         {displayedRooms.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-3xl border border-slate-200 p-6">
             <Check className="w-12 h-12 text-emerald-500 mx-auto mb-2" />
-            <h3 className="text-base font-bold text-slate-800">ยอดเยี่ยมมาก!</h3>
+            <h3 className="text-base font-bold text-slate-800">ไม่มีรายการค้าง</h3>
             <p className="text-xs text-slate-500 mt-1">
               {activeTab === 'PENDING'
                 ? 'ไม่มีห้องค้างทำความสะอาดในขณะนี้ ทุกห้องพร้อมรับแขกครบถ้วน'
+                : activeTab === 'MAINTENANCE'
+                ? 'ไม่มีห้องที่แจ้งซ่อมบำรุง'
                 : 'ยังไม่มีห้องที่บันทึกว่าทำความสะอาดเสร็จแล้ว'}
             </p>
           </div>
@@ -93,6 +120,8 @@ export const HousekeepingMobileView: React.FC = () => {
                   ? 'bg-indigo-50/50 border-indigo-200 ring-2 ring-indigo-400'
                   : room.status === 'VACANT_DIRTY'
                   ? 'bg-amber-50/40 border-amber-200'
+                  : room.status === 'MAINTENANCE'
+                  ? 'bg-red-50/40 border-red-200'
                   : 'bg-white border-slate-200'
               }`}
             >
@@ -121,36 +150,54 @@ export const HousekeepingMobileView: React.FC = () => {
                       <Check className="w-3.5 h-3.5 text-emerald-600" /> สะอาดเรียบร้อย
                     </span>
                   )}
+                  {room.status === 'MAINTENANCE' && (
+                    <span className="text-xs font-bold text-red-800 bg-red-100 px-3 py-1 rounded-full flex items-center gap-1 border border-red-300">
+                      <Wrench className="w-3.5 h-3.5 text-red-600" /> ปิดซ่อมบำรุง
+                    </span>
+                  )}
                 </div>
               </div>
 
+              {/* Maintenance issue note if present */}
+              {room.status === 'MAINTENANCE' && room.maintenanceReason && (
+                <div className="p-3 bg-red-100/60 rounded-2xl text-xs text-red-800 mb-3 flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-bold">อาการชำรุด:</span> {room.maintenanceReason}
+                  </div>
+                </div>
+              )}
+
               {/* Cleaning Checklist reminder */}
-              <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-600 bg-white p-3 rounded-2xl border border-slate-200/80 mb-4">
-                <span className="flex items-center gap-1.5">
-                  <CheckSquare className="w-3.5 h-3.5 text-teal-600" /> เปลี่ยนผ้าปู & ปลอกหมอน
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <CheckSquare className="w-3.5 h-3.5 text-teal-600" /> ทำความสะอาดห้องน้ำ
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <CheckSquare className="w-3.5 h-3.5 text-teal-600" /> เติมน้ำดื่ม & มินิบาร์
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <CheckSquare className="w-3.5 h-3.5 text-teal-600" /> ตรวจสอบสระ/จากุซซี่
-                </span>
-              </div>
+              {room.status !== 'MAINTENANCE' && (
+                <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-600 bg-white p-3 rounded-2xl border border-slate-200/80 mb-4">
+                  <span className="flex items-center gap-1.5">
+                    <CheckSquare className="w-3.5 h-3.5 text-teal-600" /> เปลี่ยนผ้าปู & ปลอกหมอน
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <CheckSquare className="w-3.5 h-3.5 text-teal-600" /> ทำความสะอาดห้องน้ำ
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <CheckSquare className="w-3.5 h-3.5 text-teal-600" /> เติมน้ำดื่ม & มินิบาร์
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <CheckSquare className="w-3.5 h-3.5 text-teal-600" /> ตรวจสอบสระ/จากุซซี่
+                  </span>
+                </div>
+              )}
 
               {/* Actions */}
-              <div className="flex items-center justify-between gap-3 pt-1">
-                <button
-                  type="button"
-                  onClick={() => alert('เปิดกล้องถ่ายภาพความเสียหายเรียบร้อย')}
-                  className="p-2.5 text-slate-500 hover:text-slate-800 bg-white hover:bg-slate-100 border border-slate-200 rounded-xl text-xs flex items-center gap-1.5"
-                  title="ถ่ายภาพความเสียหาย"
-                >
-                  <Camera className="w-4 h-4 text-slate-600" />
-                  <span className="hidden sm:inline">แจ้งของเสียหาย</span>
-                </button>
+              <div className="flex items-center justify-between gap-2 pt-1">
+                {room.status !== 'MAINTENANCE' && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedRoomForIssue(room)}
+                    className="p-2.5 text-red-600 hover:bg-red-50 border border-red-200 rounded-xl text-xs flex items-center gap-1.5 font-medium transition-colors"
+                  >
+                    <Wrench className="w-3.5 h-3.5 text-red-600" />
+                    <span>แจ้งชำรุด</span>
+                  </button>
+                )}
 
                 {room.status === 'VACANT_DIRTY' && (
                   <button
@@ -189,6 +236,56 @@ export const HousekeepingMobileView: React.FC = () => {
           ))
         )}
       </div>
+
+      {/* Report Issue Modal */}
+      {selectedRoomForIssue && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl">
+            <div className="flex justify-between items-center">
+              <h3 className="font-bold text-slate-900 text-base flex items-center gap-1.5 text-red-600">
+                <Wrench className="w-5 h-5" />
+                แจ้งชำรุดห้อง {selectedRoomForIssue.roomNumber}
+              </h3>
+              <button onClick={() => setSelectedRoomForIssue(null)}>
+                <X className="w-5 h-5 text-slate-400" />
+              </button>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                รายละเอียดอุปกรณ์ชำรุด / ปัญหา
+              </label>
+              <textarea
+                value={issueDescription}
+                onChange={(e) => setIssueDescription(e.target.value)}
+                rows={3}
+                className="w-full p-3 bg-slate-50 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-red-500"
+              />
+            </div>
+
+            <p className="text-[11px] text-slate-500">
+              เมื่อกดแจ้ง ห้องจะถูกเปลี่ยนสถานะเป็น <strong className="text-red-600">"ปิดซ่อมบำรุง"</strong> บนระบบหน้าฟร้อนท์และไม่เปิดให้ลูกค้าจองจนกว่าช่างจะซ่อมเสร็จ
+            </p>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setSelectedRoomForIssue(null)}
+                className="px-4 py-2 text-xs font-semibold text-slate-600"
+              >
+                ยกเลิก
+              </button>
+              <button
+                type="button"
+                onClick={handleReportIssue}
+                className="px-5 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl shadow-md"
+              >
+                บันทึกแจ้งซ่อม
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

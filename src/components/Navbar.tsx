@@ -1,9 +1,13 @@
 import React from 'react';
 import { useResort } from '../context/ResortContext';
 import { UserRole } from '../types';
-import { Palmtree, User, Hotel, Sparkles, BarChart3, RefreshCw } from 'lucide-react';
+import { Palmtree, User, Hotel, Sparkles, BarChart3, RefreshCw, Search } from 'lucide-react';
 
-export const Navbar: React.FC = () => {
+interface NavbarProps {
+  onOpenMyBookings: () => void;
+}
+
+export const Navbar: React.FC<NavbarProps> = ({ onOpenMyBookings }) => {
   const { activeRole, setActiveRole, resetAllData } = useResort();
 
   const roleOptions: { role: UserRole; label: string; icon: React.ReactNode }[] = [
@@ -27,12 +31,24 @@ export const Navbar: React.FC = () => {
               <h1 className="text-xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
                 THE HAVEN <span className="text-teal-600 text-sm font-semibold uppercase tracking-wider bg-teal-50 px-2 py-0.5 rounded-full border border-teal-200">Resort & Villas</span>
               </h1>
-              <p className="text-xs text-slate-500 font-normal">ระบบบริหารจัดการและจองห้องพักบน Cloudflare Edge</p>
+              <p className="text-xs text-slate-500 font-normal">ระบบบริหารจัดการและจองห้องพักบน Cloudflare Edge (Phase 2)</p>
             </div>
           </div>
 
-          {/* Role Navigation Switcher */}
+          {/* Role Navigation Switcher & Tools */}
           <div className="flex items-center gap-2">
+            
+            {/* My Bookings Lookup Button */}
+            <button
+              onClick={onOpenMyBookings}
+              className="px-3.5 py-2 bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition-colors"
+            >
+              <Search className="w-3.5 h-3.5 text-teal-600" />
+              <span className="hidden sm:inline">ค้นหาการจองของฉัน</span>
+              <span className="sm:hidden">การจอง</span>
+            </button>
+
+            {/* Role Options */}
             <nav className="flex items-center p-1.5 bg-slate-100 rounded-xl border border-slate-200/80">
               {roleOptions.map(item => {
                 const isActive = activeRole === item.role;
@@ -40,7 +56,7 @@ export const Navbar: React.FC = () => {
                   <button
                     key={item.role}
                     onClick={() => setActiveRole(item.role)}
-                    className={`flex items-center gap-2 px-3.5 py-2 text-xs sm:text-sm font-medium rounded-lg transition-all duration-200 ${
+                    className={`flex items-center gap-2 px-3 py-2 text-xs sm:text-sm font-medium rounded-lg transition-all duration-200 ${
                       isActive
                         ? 'bg-white text-teal-800 shadow-sm font-semibold border border-slate-200/60'
                         : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'

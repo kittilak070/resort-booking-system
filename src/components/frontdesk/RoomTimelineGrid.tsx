@@ -3,9 +3,10 @@ import { useResort } from '../../context/ResortContext';
 import { RoomStatus } from '../../types';
 import { CheckInModal } from './CheckInModal';
 import { CheckOutModal } from './CheckOutModal';
+import { WalkInModal } from './WalkInModal';
 import { 
   Hotel, Plus, User, Bed, Check, Sparkles, 
-  AlertCircle, Wrench, ArrowRightLeft, ShieldAlert
+  AlertCircle, Wrench, ArrowRightLeft, ShieldAlert, UserCheck
 } from 'lucide-react';
 
 export const RoomTimelineGrid: React.FC = () => {
@@ -13,6 +14,7 @@ export const RoomTimelineGrid: React.FC = () => {
 
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [showCheckInModal, setShowCheckInModal] = useState<boolean>(false);
+  const [showWalkInModal, setShowWalkInModal] = useState<boolean>(false);
   const [selectedBookingForCheckOut, setSelectedBookingForCheckOut] = useState<string | null>(null);
 
   // Filtered rooms
@@ -49,8 +51,8 @@ export const RoomTimelineGrid: React.FC = () => {
         );
       case 'MAINTENANCE':
         return (
-          <span className="inline-flex items-center gap-1 text-xs font-bold text-slate-700 bg-slate-200 px-2.5 py-1 rounded-full border border-slate-300">
-            <Wrench className="w-3.5 h-3.5 text-slate-500" /> ปิดซ่อมบำรุง
+          <span className="inline-flex items-center gap-1 text-xs font-bold text-red-700 bg-red-100 px-2.5 py-1 rounded-full border border-red-300">
+            <Wrench className="w-3.5 h-3.5 text-red-600" /> ปิดซ่อมบำรุง
           </span>
         );
     }
@@ -71,13 +73,23 @@ export const RoomTimelineGrid: React.FC = () => {
           </p>
         </div>
 
-        <button
-          onClick={() => setShowCheckInModal(true)}
-          className="px-5 py-2.5 bg-teal-700 hover:bg-teal-800 text-white text-xs sm:text-sm font-bold rounded-xl shadow-md inline-flex items-center gap-2 self-start sm:self-auto transition-transform hover:scale-105"
-        >
-          <Plus className="w-4 h-4" />
-          <span>ทำรายการเช็คอิน (Check-in)</span>
-        </button>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <button
+            onClick={() => setShowWalkInModal(true)}
+            className="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs sm:text-sm font-bold rounded-xl shadow-md inline-flex items-center gap-2 transition-transform hover:scale-105"
+          >
+            <UserCheck className="w-4 h-4 text-teal-400" />
+            <span>รับลูกค้า Walk-in</span>
+          </button>
+
+          <button
+            onClick={() => setShowCheckInModal(true)}
+            className="px-4 py-2.5 bg-teal-700 hover:bg-teal-800 text-white text-xs sm:text-sm font-bold rounded-xl shadow-md inline-flex items-center gap-2 transition-transform hover:scale-105"
+          >
+            <Plus className="w-4 h-4" />
+            <span>เช็คอินตามจอง</span>
+          </button>
+        </div>
       </div>
 
       {/* Filter Tabs */}
@@ -242,6 +254,13 @@ export const RoomTimelineGrid: React.FC = () => {
                     <span>แม่บ้านกำลังเตรียมห้อง</span>
                   </div>
                 )}
+
+                {room.status === 'MAINTENANCE' && (
+                  <div className="w-full text-center py-1.5 text-xs text-red-700 font-medium flex items-center justify-center gap-1 bg-red-50 rounded-lg">
+                    <Wrench className="w-3.5 h-3.5 text-red-600" />
+                    <span className="truncate">{room.maintenanceReason || 'ปิดซ่อมบำรุงชั่วคราว'}</span>
+                  </div>
+                )}
               </div>
 
             </div>
@@ -252,6 +271,10 @@ export const RoomTimelineGrid: React.FC = () => {
       {/* Modals */}
       {showCheckInModal && (
         <CheckInModal onClose={() => setShowCheckInModal(false)} />
+      )}
+
+      {showWalkInModal && (
+        <WalkInModal onClose={() => setShowWalkInModal(false)} />
       )}
 
       {selectedBookingForCheckOut && (
