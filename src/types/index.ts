@@ -12,28 +12,36 @@ export type BookingStatus =
   | 'CHECKED_OUT'     // เช็คเอาท์เรียบร้อย
   | 'CANCELLED';      // ยกเลิกคำสั่งจอง / สต็อกถูกปล่อยคืน
 
+export type Language = 'th' | 'en';
+
 export interface Room {
   id: string;
   roomNumber: string;
   name: string;
+  nameEn: string;
   type: 'POOL_VILLA' | 'BEACHFRONT_SUITE' | 'GARDEN_BUNGALOW' | 'DELUXE_ROOM';
   typeName: string;
+  typeNameEn: string;
   capacity: number;
   bedType: string;
   sizeSqM: number;
   basePrice: number;
   weekendPrice: number;
   description: string;
+  descriptionEn: string;
   images: string[];
   amenities: string[];
   status: RoomStatus;
   currentBookingId?: string;
   maintenanceReason?: string;
+  rating: number;
+  reviewCount: number;
 }
 
 export interface AddOn {
   id: string;
   name: string;
+  nameEn: string;
   price: number;
   unit: string;
   description: string;
@@ -65,6 +73,36 @@ export interface MaintenanceIssue {
   reportedAt: string;
   status: 'PENDING_REPAIR' | 'RESOLVED';
   resolvedAt?: string;
+}
+
+export interface Review {
+  id: string;
+  roomId: string;
+  guestName: string;
+  rating: number; // 1 - 5
+  cleanlinessRating: number; // 1 - 5
+  comment: string;
+  stayDate: string;
+  createdAt: string;
+}
+
+export interface MinibarItem {
+  id: string;
+  name: string;
+  nameEn: string;
+  category: 'BEVERAGE' | 'SNACK' | 'AMENITY';
+  price: number;
+  unit: string;
+}
+
+export interface DispatchedNotification {
+  id: string;
+  type: 'SMS' | 'EMAIL';
+  recipient: string;
+  title: string;
+  message: string;
+  bookingCode: string;
+  timestamp: string;
 }
 
 export interface Booking {
@@ -99,6 +137,8 @@ export interface Booking {
   isWalkIn?: boolean;
   refundAmount?: number;
   cancellationReason?: string;
+  minibarCharges?: number;
+  reviewed?: boolean;
 }
 
 export type UserRole = 'GUEST' | 'FRONT_DESK' | 'HOUSEKEEPER' | 'MANAGER';

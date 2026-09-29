@@ -6,14 +6,17 @@ import { SearchFilter } from './components/guest/SearchFilter';
 import { RoomCard } from './components/guest/RoomCard';
 import { BookingModal } from './components/guest/BookingModal';
 import { MyBookingLookup } from './components/guest/MyBookingLookup';
+import { ReviewsModal } from './components/guest/ReviewsModal';
+import { NotificationDrawer } from './components/common/NotificationDrawer';
 import { RoomTimelineGrid } from './components/frontdesk/RoomTimelineGrid';
 import { HousekeepingMobileView } from './components/housekeeping/HousekeepingMobileView';
 import { PricingManager } from './components/admin/PricingManager';
 import { Room } from './types';
-import { Palmtree, ShieldCheck, Heart, Sparkles, Phone, Mail, MapPin } from 'lucide-react';
+import { Palmtree, ShieldCheck, Heart, Sparkles, Phone, Mail, MapPin, Star } from 'lucide-react';
 
 const MainAppContent: React.FC = () => {
-  const { rooms, activeRole } = useResort();
+  const { rooms, activeRole, language } = useResort();
+  const isEn = language === 'en';
 
   // Search filter states
   const today = new Date().toISOString().split('T')[0];
@@ -24,9 +27,12 @@ const MainAppContent: React.FC = () => {
   const [guestsCount, setGuestsCount] = useState<number>(2);
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
 
-  // Selected room for booking
+  // Modals state
   const [selectedRoomForBooking, setSelectedRoomForBooking] = useState<Room | null>(null);
   const [showMyBookingLookup, setShowMyBookingLookup] = useState<boolean>(false);
+  const [showNotificationDrawer, setShowNotificationDrawer] = useState<boolean>(false);
+  const [showReviewsModal, setShowReviewsModal] = useState<boolean>(false);
+  const [selectedRoomForReviews, setSelectedRoomForReviews] = useState<Room | null>(null);
 
   // Filter rooms based on category & capacity
   const filteredRooms = rooms.filter(room => {
@@ -39,7 +45,10 @@ const MainAppContent: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col justify-between">
       <div>
-        <Navbar onOpenMyBookings={() => setShowMyBookingLookup(true)} />
+        <Navbar 
+          onOpenMyBookings={() => setShowMyBookingLookup(true)} 
+          onOpenNotifications={() => setShowNotificationDrawer(true)}
+        />
 
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           
@@ -61,18 +70,31 @@ const MainAppContent: React.FC = () => {
 
               {/* Room Cards Grid */}
               <div className="mb-12">
-                <div className="flex items-center justify-between mb-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                   <div>
                     <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-                      วิลล่าและห้องพักแนะนำ
+                      {isEn ? 'Featured Villas & Suites' : 'วิลล่าและห้องพักแนะนำ'}
                       <span className="text-xs font-semibold text-teal-700 bg-teal-50 px-2.5 py-1 rounded-full border border-teal-200">
-                        พบ {filteredRooms.length} ห้องพัก
+                        {isEn ? `${filteredRooms.length} available` : `พบ ${filteredRooms.length} ห้องพัก`}
                       </span>
                     </h3>
                     <p className="text-xs sm:text-sm text-slate-500 mt-1">
-                      เลือกห้องพักที่ท่านต้องการ จองวันนี้พร้อมรับสิทธิ์ฟรีบริการเสริมพิเศษ
+                      {isEn
+                        ? 'Reserve your private sanctuary today with complimentary resort privileges and instant hold lock'
+                        : 'เลือกห้องพักที่ท่านต้องการ จองวันนี้พร้อมรับสิทธิ์ฟรีบริการเสริมพิเศษและระบบล็อกห้อง 15 นาที'}
                     </p>
                   </div>
+
+                  <button
+                    onClick={() => {
+                      setSelectedRoomForReviews(null);
+                      setShowReviewsModal(true);
+                    }}
+                    className="self-start sm:self-auto px-4 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-bold text-xs rounded-xl shadow-xs inline-flex items-center gap-1.5 transition-colors"
+                  >
+                    <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                    <span>{isEn ? 'View All Guest Reviews' : 'ดูรีวิวผู้เข้าพักทั้งหมด'}</span>
+                  </button>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -82,6 +104,10 @@ const MainAppContent: React.FC = () => {
                       room={room}
                       checkInDate={checkInDate}
                       onSelect={(r) => setSelectedRoomForBooking(r)}
+                      onViewReviews={(r) => {
+                        setSelectedRoomForReviews(r);
+                        setShowReviewsModal(true);
+                      }}
                     />
                   ))}
                 </div>
@@ -123,6 +149,20 @@ const MainAppContent: React.FC = () => {
         <MyBookingLookup onClose={() => setShowMyBookingLookup(false)} />
       )}
 
+      {/* Reviews Modal */}
+      {showReviewsModal && (
+        <ReviewsModal
+          room={selectedRoomForReviews}
+          onClose={() => setShowReviewsModal(false)}
+        />
+      )}
+
+      {/* Notification Drawer */}
+      <NotificationDrawer
+        isOpen={showNotificationDrawer}
+        onClose={() => setShowNotificationDrawer(false)}
+      />
+
       {/* Footer */}
       <footer className="bg-slate-900 text-white border-t border-slate-800 mt-16 pt-12 pb-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -134,42 +174,52 @@ const MainAppContent: React.FC = () => {
                 <span>The Haven Serene Resort</span>
               </div>
               <p className="leading-relaxed">
-                รีสอร์ทส่วนตัวริมทะเลระดับ 5 ดาว มอบประสบการณ์พักผ่อนเหนือระดับท่ามกลางธรรมชาติอันบริสุทธิ์
+                {isEn
+                  ? 'A 5-star beachfront luxury sanctuary offering unmatched hospitality, tranquility, and timeless elegance.'
+                  : 'รีสอร์ทส่วนตัวริมทะเลระดับ 5 ดาว มอบประสบการณ์พักผ่อนเหนือระดับท่ามกลางธรรมชาติอันบริสุทธิ์'}
               </p>
               <div className="flex items-center gap-1.5 text-teal-400 font-semibold">
                 <Sparkles className="w-3.5 h-3.5" />
-                <span>Powered by Cloudflare Pages & Edge Worker</span>
+                <span>Powered by Cloudflare Pages & Edge Worker (Phase 3)</span>
               </div>
             </div>
 
             <div>
-              <h4 className="text-white font-bold text-sm mb-3">นโยบายและการจอง</h4>
+              <h4 className="text-white font-bold text-sm mb-3">
+                {isEn ? 'Policies & Operations' : 'นโยบายและการจอง'}
+              </h4>
               <ul className="space-y-2">
-                <li>• ระบบล็อกห้อง 15 นาที ไร้ Overbooking (BR-01)</li>
-                <li>• เวลาเช็คอิน 14:00 น. / เช็คเอาท์ 12:00 น. (BR-02)</li>
-                <li>• นโยบายการยกเลิกและคืนเงิน (BR-03)</li>
-                <li>• เงินมัดจำความเสียหาย 1,000 บาท (BR-04)</li>
+                <li>• {isEn ? '15-min Inventory Hold (BR-01)' : 'ระบบล็อกห้อง 15 นาที ไร้ Overbooking (BR-01)'}</li>
+                <li>• {isEn ? 'Check-in 14:00 / Check-out 12:00 (BR-02)' : 'เวลาเช็คอิน 14:00 น. / เช็คเอาท์ 12:00 น. (BR-02)'}</li>
+                <li>• {isEn ? 'Tiered Cancellation & Refund Policy (BR-03)' : 'นโยบายการยกเลิกและคืนเงินเป็นลำดับขั้น (BR-03)'}</li>
+                <li>• {isEn ? 'Security Deposit ฿1,000 with Minibar Folio (BR-04)' : 'เงินมัดจำความเสียหาย 1,000 บาท & หักมินิบาร์ (BR-04)'}</li>
               </ul>
             </div>
 
             <div>
-              <h4 className="text-white font-bold text-sm mb-3">ติดต่อและสอบถาม</h4>
+              <h4 className="text-white font-bold text-sm mb-3">
+                {isEn ? 'Contact & Assistance' : 'ติดต่อและสอบถาม'}
+              </h4>
               <ul className="space-y-2">
-                <li className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-teal-400" /> หาดทรายขาว เกาะสวรรค์ ตราด</li>
-                <li className="flex items-center gap-1.5"><Phone className="w-3.5 h-3.5 text-teal-400" /> 039-555-888 (24 ชั่วโมง)</li>
+                <li className="flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5 text-teal-400" /> {isEn ? 'White Sand Beach, Koh Chang, Trat' : 'หาดทรายขาว เกาะสวรรค์ ตราด'}</li>
+                <li className="flex items-center gap-1.5"><Phone className="w-3.5 h-3.5 text-teal-400" /> 039-555-888 (24/7 Front Desk)</li>
                 <li className="flex items-center gap-1.5"><Mail className="w-3.5 h-3.5 text-teal-400" /> reservation@thehavenresort.com</li>
               </ul>
             </div>
 
             <div>
-              <h4 className="text-white font-bold text-sm mb-3">ความปลอดภัยและการเข้ารหัส</h4>
+              <h4 className="text-white font-bold text-sm mb-3">
+                {isEn ? 'Security & Encryption' : 'ความปลอดภัยและการเข้ารหัส'}
+              </h4>
               <div className="p-3 bg-slate-800 rounded-xl border border-slate-700/60 space-y-1.5">
                 <div className="flex items-center gap-1.5 text-emerald-400 font-semibold text-xs">
                   <ShieldCheck className="w-4 h-4" />
                   <span>Cloudflare SSL & WAF 100%</span>
                 </div>
                 <p className="text-[11px] text-slate-400">
-                  คุ้มครองข้อมูลตาม พ.ร.บ. คุ้มครองข้อมูลส่วนบุคคล (PDPA) และมาตรฐานการชำระเงิน PCI-DSS
+                  {isEn
+                    ? 'Compliance with PDPA & PCI-DSS encryption standards for guest privacy and payment tokens.'
+                    : 'คุ้มครองข้อมูลตาม พ.ร.บ. คุ้มครองข้อมูลส่วนบุคคล (PDPA) และมาตรฐานการชำระเงิน PCI-DSS'}
                 </p>
               </div>
             </div>
@@ -177,9 +227,9 @@ const MainAppContent: React.FC = () => {
           </div>
 
           <div className="pt-6 border-t border-slate-800/80 flex flex-col sm:flex-row items-center justify-between text-[11px] text-slate-500 gap-2">
-            <span>© 2026 The Haven Serene Resort & Villas. สงวนลิขสิทธิ์ทั้งหมด</span>
+            <span>© 2026 The Haven Serene Resort & Villas. {isEn ? 'All rights reserved.' : 'สงวนลิขสิทธิ์ทั้งหมด'}</span>
             <span className="flex items-center gap-1">
-              สร้างด้วย <Heart className="w-3 h-3 text-red-500 fill-red-500" /> บน Cloudflare Platform
+              {isEn ? 'Engineered with' : 'สร้างด้วย'} <Heart className="w-3 h-3 text-red-500 fill-red-500" /> {isEn ? 'on Cloudflare Platform' : 'บน Cloudflare Platform'}
             </span>
           </div>
         </div>
