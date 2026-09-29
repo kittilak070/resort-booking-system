@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useResort } from '../context/ResortContext';
 import { UserRole } from '../types';
-import { StaffAuthModal } from './common/StaffAuthModal';
 import { GoogleAuthModal } from './common/GoogleAuthModal';
 import { 
   Palmtree, User, Hotel, Sparkles, BarChart3, 
@@ -23,7 +22,6 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenMyBookings, onOpenNotifica
 
   const isEn = language === 'en';
 
-  const [showStaffAuthModal, setShowStaffAuthModal] = useState<boolean>(false);
   const [showGoogleModal, setShowGoogleModal] = useState<boolean>(false);
   const [showUserDropdown, setShowUserDropdown] = useState<boolean>(false);
   const [pendingRole, setPendingRole] = useState<UserRole | null>(null);
@@ -70,7 +68,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenMyBookings, onOpenNotifica
       setActiveRole(role);
     } else {
       setPendingRole(role);
-      setShowStaffAuthModal(true);
+      setShowGoogleModal(true);
     }
   };
 
@@ -305,28 +303,25 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenMyBookings, onOpenNotifica
         </div>
       </header>
 
-      {/* Staff Authentication PIN Modal */}
-      {showStaffAuthModal && pendingRole && (
-        <StaffAuthModal
-          targetRole={pendingRole}
-          isOpen={showStaffAuthModal}
-          onClose={() => {
-            setShowStaffAuthModal(false);
-            setPendingRole(null);
-          }}
-          onSuccess={() => {
-            setActiveRole(pendingRole);
-            setShowStaffAuthModal(false);
-            setPendingRole(null);
-          }}
-        />
-      )}
-
-      {/* Google Authentication Modal */}
+      {/* Google Authentication Modal (Exclusive Login Method) */}
       {showGoogleModal && (
         <GoogleAuthModal
           isOpen={showGoogleModal}
-          onClose={() => setShowGoogleModal(false)}
+          onClose={() => {
+            setShowGoogleModal(false);
+            setPendingRole(null);
+          }}
+          onSuccess={() => {
+            if (pendingRole) {
+              setActiveRole(pendingRole);
+              setPendingRole(null);
+            }
+          }}
+          requiredRoleName={
+            pendingRole
+              ? roleOptions.find(r => r.role === pendingRole)?.fullLabel
+              : undefined
+          }
         />
       )}
     </>
