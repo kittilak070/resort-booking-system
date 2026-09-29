@@ -8,6 +8,7 @@ import { BookingModal } from './components/guest/BookingModal';
 import { MyBookingLookup } from './components/guest/MyBookingLookup';
 import { ReviewsModal } from './components/guest/ReviewsModal';
 import { NotificationDrawer } from './components/common/NotificationDrawer';
+import { GoogleAuthModal } from './components/common/GoogleAuthModal';
 import { RoomTimelineGrid } from './components/frontdesk/RoomTimelineGrid';
 import { HousekeepingMobileView } from './components/housekeeping/HousekeepingMobileView';
 import { PricingManager } from './components/admin/PricingManager';
@@ -15,7 +16,7 @@ import { Room } from './types';
 import { Palmtree, ShieldCheck, Heart, Sparkles, Phone, Mail, MapPin, Star } from 'lucide-react';
 
 const MainAppContent: React.FC = () => {
-  const { rooms, activeRole, language } = useResort();
+  const { rooms, activeRole, language, currentUser } = useResort();
   const isEn = language === 'en';
 
   // Search filter states
@@ -29,10 +30,22 @@ const MainAppContent: React.FC = () => {
 
   // Modals state
   const [selectedRoomForBooking, setSelectedRoomForBooking] = useState<Room | null>(null);
+  const [pendingRoomForBooking, setPendingRoomForBooking] = useState<Room | null>(null);
+  const [showGoogleAuthForBooking, setShowGoogleAuthForBooking] = useState<boolean>(false);
   const [showMyBookingLookup, setShowMyBookingLookup] = useState<boolean>(false);
   const [showNotificationDrawer, setShowNotificationDrawer] = useState<boolean>(false);
   const [showReviewsModal, setShowReviewsModal] = useState<boolean>(false);
   const [selectedRoomForReviews, setSelectedRoomForReviews] = useState<Room | null>(null);
+
+  // Require Google Sign-In before booking
+  const handleSelectRoom = (room: Room) => {
+    if (!currentUser) {
+      setPendingRoomForBooking(room);
+      setShowGoogleAuthForBooking(true);
+    } else {
+      setSelectedRoomForBooking(room);
+    }
+  };
 
   // Filter rooms based on category & capacity
   const filteredRooms = rooms.filter(room => {
@@ -103,7 +116,7 @@ const MainAppContent: React.FC = () => {
                       key={room.id}
                       room={room}
                       checkInDate={checkInDate}
-                      onSelect={(r) => setSelectedRoomForBooking(r)}
+                      onSelect={handleSelectRoom}
                       onViewReviews={(r) => {
                         setSelectedRoomForReviews(r);
                         setShowReviewsModal(true);
@@ -141,6 +154,29 @@ const MainAppContent: React.FC = () => {
           initialCheckIn={checkInDate}
           initialCheckOut={checkOutDate}
           initialGuests={guestsCount}
+        />
+      )}
+
+      {/* Google Authentication Modal required before Booking */}
+      {showGoogleAuthForBooking && (
+        <GoogleAuthModal
+          isOpen={showGoogleAuthForBooking}
+          onClose={() => {
+            setShowGoogleAuthForBooking(false);
+            setPendingRoomForBooking(null);
+          }}
+          onSuccess={() => {
+            setShowGoogleAuthForBooking(false);
+            if (pendingRoomForBooking) {
+              setSelectedRoomForBooking(pendingRoomForBooking);
+              setPendingRoomForBooking(null);
+            }
+          }}
+          requiredRoleName={
+            pendingRoomForBooking
+              ? (isEn ? `Reservation: ${pendingRoomForBooking.nameEn}` : `การจอง: ${pendingRoomForBooking.name}`)
+              : (isEn ? 'Guest Reservation' : 'การจองห้องพัก')
+          }
         />
       )}
 

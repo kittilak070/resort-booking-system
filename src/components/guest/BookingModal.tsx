@@ -33,13 +33,21 @@ export const BookingModal: React.FC<BookingModalProps> = ({
   const [checkOutDate] = useState(initialCheckOut);
   const [guestsCount] = useState(initialGuests);
 
-  // Guest details (Auto-populated from Google login if available)
-  const [guestName, setGuestName] = useState(currentUser?.name || 'คุณวราภรณ์ มั่งมี');
+  // Guest details (Auto-populated from Google login)
+  const [guestName, setGuestName] = useState(currentUser?.name || '');
   const [guestPhone, setGuestPhone] = useState('089-876-5432');
-  const [guestEmail, setGuestEmail] = useState(currentUser?.email || 'waraporn@example.com');
+  const [guestEmail, setGuestEmail] = useState(currentUser?.email || '');
   const [guestIdCard, setGuestIdCard] = useState('3100500892147');
   const [specialRequests, setSpecialRequests] = useState('ขอเช็คอินช่วง 14:30 น. และขอห้องปลอดบุหรี่');
   const [paymentMethod, setPaymentMethod] = useState<'PROMPTPAY_QR' | 'CREDIT_CARD'>('PROMPTPAY_QR');
+
+  // Synchronize Google account info into booking form
+  useEffect(() => {
+    if (currentUser) {
+      if (currentUser.name) setGuestName(currentUser.name);
+      if (currentUser.email) setGuestEmail(currentUser.email);
+    }
+  }, [currentUser]);
 
   // Promo code states
   const [promoInput, setPromoInput] = useState('');
@@ -382,7 +390,22 @@ export const BookingModal: React.FC<BookingModalProps> = ({
           {/* STEP 2: Guest Details */}
           {step === 2 && (
             <div className="space-y-4">
-              <div className="flex items-center gap-2 text-xs text-teal-800 bg-teal-50 p-3 rounded-xl border border-teal-200">
+              {/* Google Verified Banner */}
+              {currentUser && (
+                <div className="flex items-center gap-3 p-3 bg-teal-50 border border-teal-200 rounded-xl text-xs text-teal-800">
+                  <img
+                    src={currentUser.picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.name)}&background=0d9488&color=fff`}
+                    alt={currentUser.name}
+                    className="w-8 h-8 rounded-full border border-teal-300 shrink-0"
+                  />
+                  <div className="min-w-0">
+                    <span className="font-bold block truncate">ยืนยันตัวตนด้วย Google: {currentUser.name}</span>
+                    <span className="text-[11px] text-teal-600 font-mono truncate block">{currentUser.email}</span>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center gap-2 text-xs text-teal-800 bg-slate-50 p-3 rounded-xl border border-slate-200">
                 <ShieldCheck className="w-4 h-4 text-teal-600 shrink-0" />
                 <span>ข้อมูลผู้เข้าพักจะถูกจัดเก็บตามมาตรฐาน PDPA เพื่อความปลอดภัยและการติดต่อยืนยัน</span>
               </div>
