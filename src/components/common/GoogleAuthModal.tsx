@@ -29,8 +29,9 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClos
   const [showGuide, setShowGuide] = useState(false);
   const [copiedText, setCopiedText] = useState<string | null>(null);
 
-  // Active Client ID state (persisted in localStorage or from env)
-  const envClientId = (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID || '';
+  // Active Client ID state (persisted in localStorage or from env or default)
+  const defaultClientId = '742834959109-fo0kevt5tjf3a1e3ig6fv7v57fd4hv67.apps.googleusercontent.com';
+  const envClientId = (import.meta as any).env?.VITE_GOOGLE_CLIENT_ID || defaultClientId;
   const [activeClientId, setActiveClientId] = useState<string>(() => {
     return localStorage.getItem('resort_google_client_id') || envClientId;
   });
