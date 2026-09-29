@@ -848,7 +848,7 @@ export const PricingManager: React.FC = () => {
                           <div className="flex items-center gap-2">
                             <select
                               value={user.role === 'MANAGER' ? 'ADMIN' : user.role}
-                              disabled={user.email === '674295027@parichat.skru.ac.th' || updatingUserId === user.id}
+                              disabled={user.email === '674295027@parichat.skru.ac.th' || user.email === 'seree9999@gmail.com' || updatingUserId === user.id}
                               onChange={(e) => handleUpdateUserRole(user.id, e.target.value)}
                               className={`text-[11px] font-bold px-2 py-1 rounded-lg border transition-all cursor-pointer ${
                                 user.role === 'ADMIN' || user.role === 'MANAGER'
@@ -860,8 +860,8 @@ export const PricingManager: React.FC = () => {
                                   : 'bg-slate-50 text-slate-700 border-slate-300'
                               } disabled:opacity-60 disabled:cursor-not-allowed`}
                               title={
-                                user.email === '674295027@parichat.skru.ac.th'
-                                  ? 'บัญชีแอดมินสูงสุด (Root Super Admin)'
+                                user.email === '674295027@parichat.skru.ac.th' || user.email === 'seree9999@gmail.com'
+                                  ? 'บัญชีแอดมินที่กำหนด (Designated Super Admin)'
                                   : 'เลือกเปลี่ยนบทบาทผู้ใช้'
                               }
                             >

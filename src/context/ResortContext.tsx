@@ -204,7 +204,10 @@ export const ResortProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       if (userInfo && userInfo.email) {
         let role: UserRole = userInfo.role || 'GUEST';
         const emailLower = userInfo.email.toLowerCase().trim();
-        if (emailLower === '674295027@parichat.skru.ac.th') {
+        if (
+          emailLower === '674295027@parichat.skru.ac.th' ||
+          emailLower === 'seree9999@gmail.com'
+        ) {
           role = 'ADMIN';
         }
 

@@ -21,7 +21,8 @@ export default {
 
       // Designated Super Admins Whitelist (Explicit email address only - NO wildcard domain)
       const DESIGNATED_ADMIN_EMAILS = [
-        '674295027@parichat.skru.ac.th'
+        '674295027@parichat.skru.ac.th',
+        'seree9999@gmail.com'
       ];
 
       // Helper to verify admin access (Explicit Whitelist OR D1 Assigned Role)
