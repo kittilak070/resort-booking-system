@@ -1,5 +1,6 @@
 name = "resort-booking-system"
 compatibility_date = "2026-09-29"
+account_id = "5fcac2dd5a04b7d73856b828efb0b8e0"
 
 [assets]
 directory = "./dist"
