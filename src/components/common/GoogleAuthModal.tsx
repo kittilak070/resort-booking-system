@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useResort } from '../../context/ResortContext';
 import { X, ShieldCheck, AlertCircle, Lock } from 'lucide-react';
 
@@ -29,9 +29,8 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({
 
   // Default Google Client ID
   const activeClientId = '742834959109-fo0kevt5tjf3a1e3ig6fv7v57fd4hv67.apps.googleusercontent.com';
-  const googleBtnRef = useRef<HTMLDivElement>(null);
 
-  // Initialize official Google Identity Services
+  // Initialize official Google Identity Services in background
   useEffect(() => {
     if (!isOpen || !activeClientId) return;
 
@@ -54,17 +53,6 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({
             }
           }
         });
-
-        if (googleBtnRef.current) {
-          googleBtnRef.current.innerHTML = '';
-          window.google.accounts.id.renderButton(googleBtnRef.current, {
-            theme: 'filled_blue',
-            size: 'large',
-            width: 320,
-            text: 'continue_with',
-            shape: 'pill'
-          });
-        }
       } catch (err: any) {
         console.warn('Google Identity initialization error:', err);
       }
@@ -239,11 +227,6 @@ export const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({
               </svg>
               <span>{isLoading ? (isEn ? 'Connecting Google...' : 'กำลังเปิด Google...') : (isEn ? 'Sign in with Google' : 'เข้าสู่ระบบด้วย Google')}</span>
             </button>
-
-            {/* Google Identity Services Rendered Pill */}
-            <div className="flex justify-center pt-1">
-              <div ref={googleBtnRef}></div>
-            </div>
           </div>
 
           {/* D1 Security Info */}
