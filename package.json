@@ -7,8 +7,8 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "deploy": "npm run build && wrangler pages deploy dist --project-name=resort-booking-system",
-    "deploy:ci": "wrangler pages deploy dist --project-name=resort-booking-system"
+    "deploy": "npm run build && wrangler deploy",
+    "deploy:ci": "wrangler deploy"
   },
   "dependencies": {
     "canvas-confetti": "^1.9.4",
