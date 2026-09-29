@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Room, Booking, SelectedAddOn } from '../../types';
 import { useResort } from '../../context/ResortContext';
+import { maskEmail } from '../../utils/security';
 import confetti from 'canvas-confetti';
 import { 
   X, CheckCircle, Clock, QrCode, ShieldCheck, 
@@ -597,7 +598,7 @@ export const BookingModal: React.FC<BookingModalProps> = ({
                   ยินดีต้อนรับสู่ The Haven Serene Resort!
                 </h3>
                 <p className="text-xs text-slate-500 mt-1">
-                  ระบบได้จัดส่งเอกสารยืนยันและใบเสร็จไปยัง <span className="font-semibold text-slate-700">{activeBooking.guestEmail}</span> เรียบร้อยแล้ว
+                  ระบบได้จัดส่งเอกสารยืนยันและใบเสร็จไปยัง <span className="font-semibold text-slate-700">{maskEmail(activeBooking.guestEmail)}</span> เรียบร้อยแล้ว
                 </p>
               </div>
 

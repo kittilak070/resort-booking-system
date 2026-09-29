@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useResort } from '../../context/ResortContext';
+import { maskPhone, maskIdCard } from '../../utils/security';
 import { X, CheckCircle, ShieldCheck, CreditCard, Key } from 'lucide-react';
 
 interface CheckInModalProps {
@@ -91,6 +92,10 @@ export const CheckInModal: React.FC<CheckInModalProps> = ({ onClose, preselected
               <div className="flex justify-between">
                 <span className="text-slate-500">ผู้เข้าพัก:</span>
                 <span className="font-bold text-slate-800">{activeBooking.guestName}</span>
+              </div>
+              <div className="flex justify-between font-mono text-[11px]">
+                <span className="text-slate-500 font-sans">เบอร์ติดต่อ / บัตร ปชช.:</span>
+                <span className="text-slate-700">{maskPhone(activeBooking.guestPhone)} | {maskIdCard(activeBooking.guestIdCard)}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">ห้องพัก:</span>

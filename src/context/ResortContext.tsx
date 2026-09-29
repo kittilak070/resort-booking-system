@@ -115,6 +115,9 @@ interface ResortContextType {
     totalRevenue: number;
     totalRefunded: number;
   };
+  isStaffAuthenticated: boolean;
+  authenticateStaff: (pin: string) => boolean;
+  logoutStaff: () => void;
   resetAllData: () => void;
 }
 
@@ -128,6 +131,26 @@ export const ResortProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const saved = localStorage.getItem('resort_lang_v3');
     return (saved as Language) || 'th';
   });
+
+  // OWASP SEC-01: Staff Authentication State
+  const [isStaffAuthenticated, setIsStaffAuthenticated] = useState<boolean>(() => {
+    return sessionStorage.getItem('resort_staff_auth') === 'true';
+  });
+
+  const authenticateStaff = (pin: string): boolean => {
+    if (pin.trim() === '8888') {
+      setIsStaffAuthenticated(true);
+      sessionStorage.setItem('resort_staff_auth', 'true');
+      return true;
+    }
+    return false;
+  };
+
+  const logoutStaff = () => {
+    setIsStaffAuthenticated(false);
+    sessionStorage.removeItem('resort_staff_auth');
+    setActiveRole('GUEST');
+  };
 
   useEffect(() => {
     localStorage.setItem('resort_lang_v3', language);
@@ -881,6 +904,9 @@ export const ResortProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           totalRevenue,
           totalRefunded
         },
+        isStaffAuthenticated,
+        authenticateStaff,
+        logoutStaff,
         resetAllData
       }}
     >
