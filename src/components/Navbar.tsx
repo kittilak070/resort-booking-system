@@ -4,15 +4,16 @@ import { UserRole } from '../types';
 import { GoogleAuthModal } from './common/GoogleAuthModal';
 import { 
   Palmtree, User, Hotel, Sparkles, BarChart3, 
-  RefreshCw, Search, Bell, LogOut 
+  RefreshCw, Search, Bell, LogOut, Bot 
 } from 'lucide-react';
 
 interface NavbarProps {
   onOpenMyBookings: () => void;
   onOpenNotifications: () => void;
+  onOpenChatbot?: () => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ onOpenMyBookings, onOpenNotifications }) => {
+export const Navbar: React.FC<NavbarProps> = ({ onOpenMyBookings, onOpenNotifications, onOpenChatbot }) => {
   const { 
     activeRole, setActiveRole, resetAllData, 
     language, setLanguage, notifications,
@@ -123,6 +124,21 @@ export const Navbar: React.FC<NavbarProps> = ({ onOpenMyBookings, onOpenNotifica
             {/* Navigation & Controls on Single Neat Line */}
             <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
               
+              {/* AI Concierge Chatbot Button */}
+              {onOpenChatbot && (
+                <button
+                  onClick={onOpenChatbot}
+                  className="px-2.5 sm:px-3 py-1.5 bg-gradient-to-r from-teal-50 to-emerald-50 hover:from-teal-100 hover:to-emerald-100 text-teal-800 border border-teal-200/90 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all shadow-2xs whitespace-nowrap shrink-0 cursor-pointer"
+                  title={isEn ? 'AI Concierge Chatbot' : 'แชทบอทสอบถามข้อมูล'}
+                >
+                  <Bot className="w-3.5 h-3.5 text-teal-600 shrink-0" />
+                  <span className="hidden sm:inline whitespace-nowrap">
+                    {isEn ? 'AI Concierge' : 'แชทบอท AI'}
+                  </span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping hidden sm:inline-block" />
+                </button>
+              )}
+
               {/* My Bookings Lookup Button */}
               <button
                 onClick={onOpenMyBookings}

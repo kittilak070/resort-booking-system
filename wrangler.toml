@@ -12,3 +12,7 @@ not_found_handling = "single-page-application"
 binding = "DB"
 database_name = "resort-db"
 database_id = "f9b84164-300f-45a6-987d-aa1047991d6a"
+
+[ai]
+binding = "AI"
+

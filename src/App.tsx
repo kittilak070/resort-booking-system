@@ -9,6 +9,7 @@ import { MyBookingLookup } from './components/guest/MyBookingLookup';
 import { ReviewsModal } from './components/guest/ReviewsModal';
 import { NotificationDrawer } from './components/common/NotificationDrawer';
 import { GoogleAuthModal } from './components/common/GoogleAuthModal';
+import { ChatbotWidget } from './components/common/ChatbotWidget';
 import { RoomTimelineGrid } from './components/frontdesk/RoomTimelineGrid';
 import { HousekeepingMobileView } from './components/housekeeping/HousekeepingMobileView';
 import { PricingManager } from './components/admin/PricingManager';
@@ -36,6 +37,7 @@ const MainAppContent: React.FC = () => {
   const [showNotificationDrawer, setShowNotificationDrawer] = useState<boolean>(false);
   const [showReviewsModal, setShowReviewsModal] = useState<boolean>(false);
   const [selectedRoomForReviews, setSelectedRoomForReviews] = useState<Room | null>(null);
+  const [showChatbot, setShowChatbot] = useState<boolean>(false);
 
   // Require Google Sign-In before booking
   const handleSelectRoom = (room: Room) => {
@@ -74,6 +76,7 @@ const MainAppContent: React.FC = () => {
         <Navbar 
           onOpenMyBookings={() => setShowMyBookingLookup(true)} 
           onOpenNotifications={() => setShowNotificationDrawer(true)}
+          onOpenChatbot={() => setShowChatbot(prev => !prev)}
         />
 
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -95,7 +98,7 @@ const MainAppContent: React.FC = () => {
               />
 
               {/* Room Cards Grid */}
-              <div className="mb-12">
+              <div className="mb-12" id="room-cards-section">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                   <div>
                     <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
@@ -270,6 +273,13 @@ const MainAppContent: React.FC = () => {
       <NotificationDrawer
         isOpen={showNotificationDrawer}
         onClose={() => setShowNotificationDrawer(false)}
+      />
+
+      {/* Floating AI Concierge Chatbot Widget */}
+      <ChatbotWidget
+        isOpen={showChatbot}
+        onToggle={() => setShowChatbot(prev => !prev)}
+        onOpenMyBookings={() => setShowMyBookingLookup(true)}
       />
 
       {/* Footer */}
