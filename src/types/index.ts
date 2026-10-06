@@ -153,3 +153,27 @@ export interface UserProfile {
   createdAt?: string;
   lastLoginAt?: string;
 }
+
+export interface ChatbotFaq {
+  id: string;
+  question_th: string;
+  answer_th: string;
+  question_en?: string;
+  answer_en?: string;
+  category: string;
+  is_active: number | boolean;
+  created_at?: string;
+}
+
+export interface ChatbotSettings {
+  provider: 'cloudflare' | 'gemini' | 'openai';
+  model: string;
+  temperature: number;
+  max_tokens: number;
+  enable_d1_grounding: boolean;
+  system_prompt?: string;
+  gemini_api_key?: string;
+  openai_api_key?: string;
+  has_gemini_key?: boolean;
+  has_openai_key?: boolean;
+}

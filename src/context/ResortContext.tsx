@@ -97,11 +97,25 @@ interface ResortContextType {
   checkInGuest: (bookingId: string, depositAmount: number) => { success: boolean; error?: string };
   checkOutGuest: (bookingId: string, damageFee?: number, minibarCharges?: number) => { success: boolean; error?: string };
   updateRoomStatus: (roomId: string, status: RoomStatus, maintenanceReason?: string) => void;
+  // Room CRUD
+  addRoom: (room: Room) => Promise<{ success: boolean; room?: Room; error?: string }>;
+  updateRoom: (room: Room) => Promise<{ success: boolean; room?: Room; error?: string }>;
+  deleteRoom: (roomId: string) => Promise<{ success: boolean; error?: string }>;
+  // Promo Codes CRUD
   validatePromoCode: (code: string, subtotal: number) => { valid: boolean; discountAmount: number; message: string; promo?: PromoCode };
-  addPromoCode: (promo: PromoCode) => void;
+  addPromoCode: (promo: PromoCode) => Promise<{ success: boolean; error?: string }>;
+  updatePromoCode: (promo: PromoCode) => Promise<{ success: boolean; error?: string }>;
+  deletePromoCode: (code: string) => Promise<{ success: boolean; error?: string }>;
   togglePromoCode: (code: string) => void;
+  // Minibar CRUD
+  addMinibarItem: (item: MinibarItem) => Promise<{ success: boolean; error?: string }>;
+  updateMinibarItem: (item: MinibarItem) => Promise<{ success: boolean; error?: string }>;
+  deleteMinibarItem: (itemId: string) => Promise<{ success: boolean; error?: string }>;
+  // Maintenance CRUD
   reportMaintenance: (roomId: string, description: string, reportedBy: string) => void;
+  updateMaintenance: (issueId: string, description?: string, status?: string) => Promise<{ success: boolean; error?: string }>;
   resolveMaintenance: (issueId: string) => void;
+  deleteMaintenance: (issueId: string) => Promise<{ success: boolean; error?: string }>;
   addReview: (roomId: string, review: Omit<Review, 'id' | 'createdAt'>) => void;
   sendNotification: (type: 'SMS' | 'EMAIL', recipient: string, title: string, message: string, bookingCode: string) => void;
   clearNotifications: () => void;
@@ -308,7 +322,14 @@ export const ResortProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   });
 
   // Minibar Items
-  const [minibarItems] = useState<MinibarItem[]>(INITIAL_MINIBAR_ITEMS);
+  const [minibarItems, setMinibarItems] = useState<MinibarItem[]>(() => {
+    const saved = localStorage.getItem('resort_minibar_v3');
+    return saved ? JSON.parse(saved) : INITIAL_MINIBAR_ITEMS;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('resort_minibar_v3', JSON.stringify(minibarItems));
+  }, [minibarItems]);
 
   // Dispatched Notifications
   const [notifications, setNotifications] = useState<DispatchedNotification[]>(() => {
@@ -465,17 +486,223 @@ export const ResortProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     };
   };
 
-  const addPromoCode = (promo: PromoCode) => {
+  // Room CRUD
+  const addRoom = async (roomData: Room): Promise<{ success: boolean; room?: Room; error?: string }> => {
+    try {
+      await fetch('/api/rooms', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Admin-Email': currentUser?.email || ''
+        },
+        body: JSON.stringify({
+          id: roomData.id,
+          roomNumber: roomData.roomNumber,
+          nameTh: roomData.name,
+          nameEn: roomData.nameEn || roomData.name,
+          roomType: roomData.type,
+          typeNameTh: roomData.typeName || roomData.name,
+          typeNameEn: roomData.typeNameEn || roomData.nameEn,
+          capacity: roomData.capacity,
+          bedType: roomData.bedType,
+          sizeSqm: roomData.sizeSqM,
+          basePrice: roomData.basePrice,
+          weekendPrice: roomData.weekendPrice,
+          descriptionTh: roomData.description,
+          descriptionEn: roomData.descriptionEn,
+          status: roomData.status
+        })
+      });
+    } catch (e: any) {
+      console.warn('API addRoom error:', e.message);
+    }
+    setRooms(prev => [roomData, ...prev]);
+    return { success: true, room: roomData };
+  };
+
+  const updateRoom = async (roomData: Room): Promise<{ success: boolean; room?: Room; error?: string }> => {
+    try {
+      await fetch('/api/rooms', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Admin-Email': currentUser?.email || ''
+        },
+        body: JSON.stringify({
+          id: roomData.id,
+          roomNumber: roomData.roomNumber,
+          nameTh: roomData.name,
+          nameEn: roomData.nameEn || roomData.name,
+          roomType: roomData.type,
+          typeNameTh: roomData.typeName || roomData.name,
+          typeNameEn: roomData.typeNameEn || roomData.nameEn,
+          capacity: roomData.capacity,
+          bedType: roomData.bedType,
+          sizeSqm: roomData.sizeSqM,
+          basePrice: roomData.basePrice,
+          weekendPrice: roomData.weekendPrice,
+          descriptionTh: roomData.description,
+          descriptionEn: roomData.descriptionEn,
+          status: roomData.status
+        })
+      });
+    } catch (e: any) {
+      console.warn('API updateRoom error:', e.message);
+    }
+    setRooms(prev => prev.map(r => r.id === roomData.id ? roomData : r));
+    return { success: true, room: roomData };
+  };
+
+  const deleteRoom = async (roomId: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      await fetch(`/api/rooms?id=${encodeURIComponent(roomId)}`, {
+        method: 'DELETE',
+        headers: {
+          'X-Admin-Email': currentUser?.email || ''
+        }
+      });
+    } catch (e: any) {
+      console.warn('API deleteRoom error:', e.message);
+    }
+    setRooms(prev => prev.filter(r => r.id !== roomId));
+    return { success: true };
+  };
+
+  // Promo Codes CRUD
+  const addPromoCode = async (promo: PromoCode): Promise<{ success: boolean; error?: string }> => {
+    try {
+      await fetch('/api/promos', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Admin-Email': currentUser?.email || ''
+        },
+        body: JSON.stringify(promo)
+      });
+    } catch (e) {
+      console.warn('API addPromo error:', e);
+    }
     setPromoCodes(prev => [...prev.filter(p => p.code !== promo.code), promo]);
+    return { success: true };
+  };
+
+  const updatePromoCode = async (promo: PromoCode): Promise<{ success: boolean; error?: string }> => {
+    try {
+      await fetch('/api/promos', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Admin-Email': currentUser?.email || ''
+        },
+        body: JSON.stringify(promo)
+      });
+    } catch (e) {
+      console.warn('API updatePromo error:', e);
+    }
+    setPromoCodes(prev => prev.map(p => p.code === promo.code ? promo : p));
+    return { success: true };
+  };
+
+  const deletePromoCode = async (code: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      await fetch(`/api/promos?code=${encodeURIComponent(code)}`, {
+        method: 'DELETE',
+        headers: {
+          'X-Admin-Email': currentUser?.email || ''
+        }
+      });
+    } catch (e) {
+      console.warn('API deletePromo error:', e);
+    }
+    setPromoCodes(prev => prev.filter(p => p.code !== code));
+    return { success: true };
   };
 
   const togglePromoCode = (code: string) => {
     setPromoCodes(prev =>
-      prev.map(p => (p.code === code ? { ...p, isActive: !p.isActive } : p))
+      prev.map(p => {
+        if (p.code === code) {
+          const updated = { ...p, isActive: !p.isActive };
+          fetch('/api/promos', {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-Admin-Email': currentUser?.email || ''
+            },
+            body: JSON.stringify({ code: p.code, isActive: updated.isActive })
+          }).catch(() => {});
+          return updated;
+        }
+        return p;
+      })
     );
   };
 
-  // Maintenance
+  // Minibar CRUD
+  const addMinibarItem = async (item: MinibarItem): Promise<{ success: boolean; error?: string }> => {
+    try {
+      await fetch('/api/minibar', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Admin-Email': currentUser?.email || ''
+        },
+        body: JSON.stringify({
+          id: item.id,
+          nameTh: item.name,
+          nameEn: item.nameEn,
+          category: item.category,
+          price: item.price,
+          unit: item.unit
+        })
+      });
+    } catch (e) {
+      console.warn('API addMinibar error:', e);
+    }
+    setMinibarItems(prev => [...prev.filter(i => i.id !== item.id), item]);
+    return { success: true };
+  };
+
+  const updateMinibarItem = async (item: MinibarItem): Promise<{ success: boolean; error?: string }> => {
+    try {
+      await fetch('/api/minibar', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Admin-Email': currentUser?.email || ''
+        },
+        body: JSON.stringify({
+          id: item.id,
+          nameTh: item.name,
+          nameEn: item.nameEn,
+          category: item.category,
+          price: item.price,
+          unit: item.unit
+        })
+      });
+    } catch (e) {
+      console.warn('API updateMinibar error:', e);
+    }
+    setMinibarItems(prev => prev.map(i => i.id === item.id ? item : i));
+    return { success: true };
+  };
+
+  const deleteMinibarItem = async (itemId: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      await fetch(`/api/minibar?id=${encodeURIComponent(itemId)}`, {
+        method: 'DELETE',
+        headers: {
+          'X-Admin-Email': currentUser?.email || ''
+        }
+      });
+    } catch (e) {
+      console.warn('API deleteMinibar error:', e);
+    }
+    setMinibarItems(prev => prev.filter(i => i.id !== itemId));
+    return { success: true };
+  };
+
+  // Maintenance CRUD
   const reportMaintenance = (roomId: string, description: string, reportedBy: string) => {
     const room = rooms.find(r => r.id === roomId);
     if (!room) return;
@@ -490,23 +717,71 @@ export const ResortProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       status: 'PENDING_REPAIR'
     };
 
+    fetch('/api/maintenance', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newIssue)
+    }).catch(() => {});
+
     setMaintenanceIssues(prev => [newIssue, ...prev]);
     updateRoomStatus(roomId, 'MAINTENANCE', description);
+  };
+
+  const updateMaintenance = async (issueId: string, description?: string, status?: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      await fetch('/api/maintenance', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Admin-Email': currentUser?.email || ''
+        },
+        body: JSON.stringify({
+          id: issueId,
+          issueDescription: description,
+          status,
+          resolvedAt: status === 'RESOLVED' ? new Date().toISOString() : null
+        })
+      });
+    } catch (e) {
+      console.warn('API updateMaintenance error:', e);
+    }
+
+    setMaintenanceIssues(prev =>
+      prev.map(i =>
+        i.id === issueId
+          ? {
+              ...i,
+              issueDescription: description || i.issueDescription,
+              status: (status as any) || i.status,
+              resolvedAt: status === 'RESOLVED' ? new Date().toLocaleString('th-TH') : i.resolvedAt
+            }
+          : i
+      )
+    );
+    return { success: true };
   };
 
   const resolveMaintenance = (issueId: string) => {
     const issue = maintenanceIssues.find(i => i.id === issueId);
     if (!issue) return;
 
-    setMaintenanceIssues(prev =>
-      prev.map(i =>
-        i.id === issueId
-          ? { ...i, status: 'RESOLVED', resolvedAt: new Date().toLocaleString('th-TH') }
-          : i
-      )
-    );
-
+    updateMaintenance(issueId, undefined, 'RESOLVED');
     updateRoomStatus(issue.roomId, 'VACANT_DIRTY', undefined);
+  };
+
+  const deleteMaintenance = async (issueId: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      await fetch(`/api/maintenance?id=${encodeURIComponent(issueId)}`, {
+        method: 'DELETE',
+        headers: {
+          'X-Admin-Email': currentUser?.email || ''
+        }
+      });
+    } catch (e) {
+      console.warn('API deleteMaintenance error:', e);
+    }
+    setMaintenanceIssues(prev => prev.filter(i => i.id !== issueId));
+    return { success: true };
   };
 
   // Create standard booking
@@ -974,11 +1249,21 @@ export const ResortProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         checkInGuest,
         checkOutGuest,
         updateRoomStatus,
+        addRoom,
+        updateRoom,
+        deleteRoom,
         validatePromoCode,
         addPromoCode,
+        updatePromoCode,
+        deletePromoCode,
         togglePromoCode,
+        addMinibarItem,
+        updateMinibarItem,
+        deleteMinibarItem,
         reportMaintenance,
+        updateMaintenance,
         resolveMaintenance,
+        deleteMaintenance,
         addReview,
         sendNotification,
         clearNotifications,

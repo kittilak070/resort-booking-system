@@ -258,21 +258,21 @@ export const ChatbotWidget: React.FC<ChatbotWidgetProps> = ({
               <div className="flex items-center gap-1 shrink-0">
                 <button
                   onClick={handleResetChat}
-                  className="p-1.5 text-teal-100 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                  className="p-1.5 text-teal-100 hover:text-white hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
                   title={isEn ? 'Clear Chat History' : 'ล้างประวัติการคุย'}
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
                 </button>
                 <button
                   onClick={() => setIsMinimized(!isMinimized)}
-                  className="p-1.5 text-teal-100 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                  className="p-1.5 text-teal-100 hover:text-white hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
                   title={isMinimized ? (isEn ? 'Expand' : 'ขยาย') : (isEn ? 'Minimize' : 'ย่อหน้าต่าง')}
                 >
                   {isMinimized ? <ChevronDown className="w-3.5 h-3.5 rotate-180" /> : <Minimize2 className="w-3.5 h-3.5" />}
                 </button>
                 <button
                   onClick={onToggle}
-                  className="p-1.5 text-teal-100 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                  className="p-1.5 text-teal-100 hover:text-white hover:bg-white/10 rounded-lg transition-colors cursor-pointer"
                   title={isEn ? 'Close' : 'ปิด'}
                 >
                   <X className="w-4 h-4" />
